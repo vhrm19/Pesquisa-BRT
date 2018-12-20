@@ -30,7 +30,7 @@ W = []
 W.append(np.array([
             [0.01, 0.05, 0.07],
             [0.2, 0.041, 0.11],
-            [0.04, 0.56, 0.13]
+            [0, 0, 0] # Linha referente a bias/10
         ]))
 
 W.append(np.array([
@@ -58,7 +58,6 @@ def Forward_Propagation(input, layers, W):
 
 a, Z = Forward_Propagation(Entrada, layers, W)
 
-
 def Backpropagation(y, a, Z, W):
     Grad = []
     d = []
@@ -76,37 +75,34 @@ def Backpropagation(y, a, Z, W):
 
 Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
 
-for j in range(600):
+for j in range(60000):
     for i in range(len(W)):
-        W[i] = W[i] - (0.01/50)*Grad[-i+2]
+        W[i] -= (0.01/50)*Grad[-i+2]
     a, Z = Forward_Propagation(Entrada, layers, W)
     Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
 
 def Gradient_checking(W, Grad):
-    Vpos = np.array(W)
-    Vneg = np.array(W)
     loss2 = []
     loss1 = []
-    h = 0.0001
     V1 = []
+    h = 0.0001
     for i in range(len(Grad)):
         for j in range(len(Grad[i])):
             for k in range(len(Grad[i][j])):
                 V1.append([Grad[i][j][k]])
     for i in range(len(W)):
         for j in range(len(W[i])):
-            Vpos = np.array(W)
-            Vneg = np.array(W)
+            Vpos = W
+            Vneg = W
             for k in range(len(W[i][j])):
-                Vpos[i][j][k] = W[i][j][k] + h
-                a, lixo = Forward_Propagation(Entrada, layers, Vpos)
-                loss2.append(0.5 * sum(Tempo_por_Passageiro - a[3])**2)
-                Vneg[i][j][k] = W[i][j][k] - h
-                a, lixo = Forward_Propagation(Entrada, layers, Vneg)
-                loss1.append(0.5 * sum(Tempo_por_Passageiro - a[3])**2)
+                Vpos[i][j][k] += h
+                a, Z = Forward_Propagation(Entrada, layers, Vpos)
+                loss2.append(0.5 * sum(Tempo_por_Passageiro - a[-1])**2)
+                Vneg[i][j][k] -= 2*h
+                a, Z = Forward_Propagation(Entrada, layers, Vneg)
+                loss1.append(0.5 * sum(Tempo_por_Passageiro - a[-1])**2)
     V2 = (np.array(loss2) - np.array(loss1)) / (2 * h)
-    print(np.array(loss2), "\n\n", np.array(loss1), "\n\n")
-    print(np.abs(V1 - V2))
-    return np.abs(V1 - V2) / np.abs(V1 + V2)
+    print(np.abs(V1-V2) / np.abs(V1+V2))
 
-Check = Gradient_checking(W, Grad)
+
+Gradient_checking(W, Grad)
