@@ -20,8 +20,8 @@ def ReLU(x):
 def dReLU(x):
     return 1 * (x > 0)
 
-def bias(x): # Adiciona uma coluna de zeros
-    return np.column_stack((x, np.full((len(x),1), 0)))
+def bias(x):
+    return np.column_stack((x, np.full((len(x),1), 0))) # Ultimo número determina o bias
 
 def CS(x):
     return np.column_stack((x, np.ones(len(x)).T))
