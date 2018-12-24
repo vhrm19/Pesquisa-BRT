@@ -21,7 +21,7 @@ def dReLU(x):
     return 1 * (x > 0)
 
 def bias(x): # Adiciona uma coluna de zeros
-    return np.column_stack((x, np.zeros(len(x)).T))
+    return np.column_stack((x, np.full((len(x),1), 0)))
 
 def CS(x):
     return np.column_stack((x, np.ones(len(x)).T))
@@ -82,4 +82,4 @@ def Predict(Passageiros, Cheio):
     print("Tempo por Passageiro:", float(Out[-1]))
 
 # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
-Predict(3,3)
+Predict(1,2)
