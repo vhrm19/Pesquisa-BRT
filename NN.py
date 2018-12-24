@@ -2,7 +2,7 @@ import numpy as np
 import csv
 
 dataset = []
-data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
+data = csv.reader(open("csv embarque.csv","r"), delimiter=';')
 for line in data:
     line = [float(elemento) for elemento in line]
     dataset.append(line)
@@ -20,66 +20,59 @@ def ReLU(x):
 def dReLU(x):
     return 1 * (x > 0)
 
-def bias(x, tam): # Adiciona uma coluna de zeros de linhas tamanho "tam" na entrada dada
-    return np.column_stack((x, np.zeros(len(tam)).T))
+def bias(x): # Adiciona uma coluna de zeros
+    return np.column_stack((x, np.zeros(len(x)).T))
 
-layers = [3, 2, 1] # Layers 1, 2 e 3, com 3, 2 e 1(saida) neuronios respectivamente
+def CS(x):
+    return np.column_stack((x, np.ones(len(x)).T))
+
+layers = [2, 3, 1] # Layers com seus respectivos neuronios
 
 lamb = 0.1 # Parametro lambda da Regularização L2
 
-W = [] # Pesos aleatórios iniciais
+np.random.seed(0) # Pesos aleatórios iniciais
 
-W.append(np.array([
-            [0.01, 0.05, 0.07],
-            [0.2, 0.041, 0.11],
-            [0, 0, 0] # Linha referente a bias/10
-        ]))
+def Forward_Propagation_Initial(input, layers): 
+    Z = []
+    a = []
+    W = []
+    a.append(bias(input)) # Adiciona uma coluna de zeros na entrada
+    for i in range(len(layers)):
+        W.append(np.random.rand(len(a[i].T), layers[i])) # Gera pesos aleatorios de acordo com o shape da NN
+        Z.append(np.dot(a[i], W[i])) # Calcula a entrada * pesos
+        a.append(bias(ReLU(Z[i]))) # Aplica a função de ativação
+    a[-1] = np.delete(a[-1], -1, 1) # Deleta a coluna extra do bias
+    return a, Z, W 
 
-W.append(np.array([
-    [0.04, 0.78],
-    [0.4, 0.45],
-    [0.65, 0.23],
-    [0, 0] # Linha referente a bias/10
-]))
-
-W.append(np.array([
-    [0.04],
-    [0.41],
-    [0] # Linha referente a bias/10
-]))
+a, Z, W = Forward_Propagation_Initial(Entrada, layers)
 
 def Forward_Propagation(input, layers, W):
     Z = []
     a = []
-    a.append(bias(input, input)) # Adiciona uma coluna de zeros na entrada
+    a.append(bias(input)) # Adiciona uma coluna de zeros na entrada
     for i in range(len(layers)):
         Z.append(np.dot(a[i], W[i])) # Calcula a entrada * pesos
-        a.append(bias(ReLU(Z[i]), input)) # Aplica a função de ativação
-    a[-1] = np.delete(a[-1], 1, 1) # Deleta a coluna extra do bias
-    return a, Z
-
-a, Z = Forward_Propagation(Entrada, layers, W)
+        a.append(bias(ReLU(Z[i]))) # Aplica a função de ativação
+    a[-1] = np.delete(a[-1], -1, 1) # Deleta a coluna extra do bias
+    return a, Z 
 
 def Backpropagation(y, A, z, w):
     Grad = []
     d = []
-    for i in range(3): # Calcula as derivadas parciais (gradientes) referentes a cada layer
+    for i in range(len(W)): # Calcula as derivadas parciais (gradientes) referentes a cada layer
         if i == 0:
-            d.append(np.multiply(y - A[3], -dReLU(Z[2])))
-            Grad.append(np.dot(A[2].T, d[0]) - lamb*w[-i+2]) # 
-        if i == 1:
-            d.append(np.multiply(np.dot(d[i-1], w[-i+3].T), bias(dReLU(z[-i+2]), y)))
-            Grad.append(np.dot(A[-i+2].T, np.delete(d[i], i, 1)) - lamb*w[-i+2])
-        if i == 2:
-            d.append(np.multiply(np.dot(np.delete(d[i-1], 2, 1), w[-i+3].T), bias(dReLU(z[-i+2]), y)))
-            Grad.append(np.dot(A[-i+2].T, np.delete(d[i], i, 1)) - lamb*w[-i+2])
+            d.append(np.multiply(y - A[-1], -dReLU(Z[-i+len(W)-1])))
+        else:
+            d.append(np.multiply(np.dot(d[i-1], w[-i+len(w)].T), CS(dReLU(z[-i+len(W)-1]))))
+            d[i] = np.delete(d[i], -1, 1)
+        Grad.append(np.dot(A[-i+len(W)-1].T, d[i]) - lamb*w[-i+len(W)-1])
     return Grad
 
 Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
 
-for j in range(5000): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2
+for j in range(len(layers) * 1000): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
     for i in range(len(W)):
-        W[i] -= (0.01/50)*Grad[-i+2]
+        W[i] -= (1 * 10**(-len(layers)) / len(Entrada)) * Grad[-i+len(W)-1]
     a, Z = Forward_Propagation(Entrada, layers, W)
     Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
 
@@ -89,4 +82,4 @@ def Predict(Passageiros, Cheio):
     print("Tempo por Passageiro:", float(Out[-1]))
 
 # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
-Predict(1,2)
+Predict(3,3)
