@@ -21,12 +21,12 @@ def dReLU(x):
     return 1 * (x > 0)
 
 def bias(x):
-    return np.column_stack((x, np.full((len(x),1), 0))) # Ultimo número determina o bias
+    return np.column_stack((x, np.full((len(x),1), 0.8))) # Ultimo número determina o bias
 
 def CS(x):
     return np.column_stack((x, np.ones(len(x)).T))
 
-layers = [2, 3, 1] # Layers com seus respectivos neuronios
+layers = [3, 2, 1] # Layers com seus respectivos neuronios
 
 lamb = 0.1 # Parametro lambda da Regularização L2
 
@@ -70,11 +70,15 @@ def Backpropagation(y, A, z, w):
 
 Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
 
-for j in range(len(layers) * 1000): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
+print("Custo nao minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
+
+for j in range(len(layers) * sum(layers) * 1000): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
     for i in range(len(W)):
         W[i] -= (1 * 10**(-len(layers)) / len(Entrada)) * Grad[-i+len(W)-1]
     a, Z = Forward_Propagation(Entrada, layers, W)
     Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
+
+print("Custo minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
 
 def Predict(Passageiros, Cheio):
     entrada = np.column_stack((Passageiros, Cheio))
@@ -82,4 +86,4 @@ def Predict(Passageiros, Cheio):
     print("Tempo por Passageiro:", float(Out[-1]))
 
 # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
-Predict(1,2)
+Predict(3,3)
