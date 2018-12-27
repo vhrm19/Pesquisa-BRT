@@ -2,7 +2,7 @@ import numpy as np
 import csv
 
 dataset = []
-data = csv.reader(open("csv embarque.csv","r"), delimiter=';')
+data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
 for line in data:
     line = [float(elemento) for elemento in line]
     dataset.append(line)
@@ -21,14 +21,14 @@ def dReLU(x):
     return 1 * (x > 0)
 
 def bias(x):
-    return np.column_stack((x, np.full((len(x),1), 0.8))) # Ultimo número determina o bias
+    return np.column_stack((x, np.full((len(x),1), 1))) # Ultimo número determina o bias
 
 def CS(x):
     return np.column_stack((x, np.ones(len(x)).T))
 
-layers = [3, 2, 1] # Layers com seus respectivos neuronios
+layers = [4, 3, 2, 1] # Layers com seus respectivos neuronios
 
-lamb = 0.1 # Parametro lambda da Regularização L2
+lamb = 0.01 # Parametro lambda da Regularização L2
 
 np.random.seed(0) # Pesos aleatórios iniciais
 
@@ -86,4 +86,4 @@ def Predict(Passageiros, Cheio):
     print("Tempo por Passageiro:", float(Out[-1]))
 
 # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
-Predict(3,3)
+Predict(1,3)
