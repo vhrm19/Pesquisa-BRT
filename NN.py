@@ -2,7 +2,7 @@ import numpy as np
 import csv
 
 dataset = []
-data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
+data = csv.reader(open("csv embarque.csv","r"), delimiter=';')
 for line in data:
     line = [float(elemento) for elemento in line]
     dataset.append(line)
@@ -21,12 +21,12 @@ def dReLU(x):
     return 1 * (x > 0)
 
 def bias(x):
-    return np.column_stack((x, np.full((len(x),1), 1))) # Ultimo número determina o bias
+    return np.vstack((x, np.full(len(x.T), 0.8))) # Ultimo número determina o bias
 
 def CS(x):
     return np.column_stack((x, np.ones(len(x)).T))
 
-layers = [4, 3, 2, 1] # Layers com seus respectivos neuronios
+layers = [1] # Layers com seus respectivos neuronios
 
 lamb = 0.01 # Parametro lambda da Regularização L2
 
@@ -36,12 +36,13 @@ def Forward_Propagation_Initial(input, layers):
     Z = []
     a = []
     W = []
-    a.append(bias(input)) # Adiciona uma coluna de zeros na entrada
+    a.append(input) # Adiciona uma coluna do bias na entrada
     for i in range(len(layers)):
         W.append(np.random.rand(len(a[i].T), layers[i])) # Gera pesos aleatorios de acordo com o shape da NN
+        W[i] = bias(W[i])
+        a[i] = CS(a[i])
         Z.append(np.dot(a[i], W[i])) # Calcula a entrada * pesos
-        a.append(bias(ReLU(Z[i]))) # Aplica a função de ativação
-    a[-1] = np.delete(a[-1], -1, 1) # Deleta a coluna extra do bias
+        a.append(ReLU(Z[i])) # Aplica a função de ativação
     return a, Z, W 
 
 a, Z, W = Forward_Propagation_Initial(Entrada, layers)
@@ -49,11 +50,11 @@ a, Z, W = Forward_Propagation_Initial(Entrada, layers)
 def Forward_Propagation(input, layers, W):
     Z = []
     a = []
-    a.append(bias(input)) # Adiciona uma coluna de zeros na entrada
+    a.append(input) # Adiciona uma coluna de zeros na entrada
     for i in range(len(layers)):
+        a[i] = CS(a[i])
         Z.append(np.dot(a[i], W[i])) # Calcula a entrada * pesos
-        a.append(bias(ReLU(Z[i]))) # Aplica a função de ativação
-    a[-1] = np.delete(a[-1], -1, 1) # Deleta a coluna extra do bias
+        a.append(ReLU(Z[i])) # Aplica a função de ativação
     return a, Z 
 
 def Backpropagation(y, A, z, w):
@@ -86,4 +87,4 @@ def Predict(Passageiros, Cheio):
     print("Tempo por Passageiro:", float(Out[-1]))
 
 # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
-Predict(1,3)
+Predict(2,2)
