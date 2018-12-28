@@ -26,9 +26,9 @@ def bias(x):
 def CS(x):
     return np.column_stack((x, np.ones(len(x)).T))
 
-layers = [1] # Layers com seus respectivos neuronios
+layers = [5, 1] # Layers com seus respectivos neuronios
 
-lamb = 0.01 # Parametro lambda da Regularização L2
+lamb = 0 # Parametro lambda da Regularização L2
 
 np.random.seed(0) # Pesos aleatórios iniciais
 
@@ -87,4 +87,4 @@ def Predict(Passageiros, Cheio):
     print("Tempo por Passageiro:", float(Out[-1]))
 
 # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
-Predict(2,2)
+Predict(1,2)
