@@ -64,8 +64,7 @@ def Backpropagation(y, A, z, w):
         if i == 0:
             d.append(np.multiply(y - A[-1], -dReLU(Z[-i+len(W)-1])))
         else:
-            d.append(np.multiply(np.dot(d[i-1], w[-i+len(w)].T), CS(dReLU(z[-i+len(W)-1]))))
-            d[i] = np.delete(d[i], -1, 1)
+            d.append(np.multiply(np.dot(d[i-1], np.delete(w[-i+len(w)].T, -1, 1)), (dReLU(z[-i+len(W)-1]))))
         Grad.append(np.dot(A[-i+len(W)-1].T, d[i]) - lamb*w[-i+len(W)-1])
     return Grad
 
@@ -88,3 +87,4 @@ def Predict(Passageiros, Cheio):
 
 # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
 Predict(1,2)
+Predict(2,2)
