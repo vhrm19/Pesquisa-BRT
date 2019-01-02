@@ -54,6 +54,11 @@ def Backpropagation(y, A, Z, w):
         Grad.append(np.dot(A[-i+len(W)-1].T, d[i]) - lamb*w[-i+len(W)-1])
     return Grad
 
+def Predict(Passageiros, Cheio):
+    entrada = np.column_stack((Passageiros, Cheio))
+    Out, nd = Forward_Propagation(entrada, layers, W)
+    print("Tempo por Passageiro:", float((Out[-1]*1.397990069)+2.0253333)) # (Out[-1]*2.679165479)+2.446792929 EMBARQUE; (Out[-1]*1.397990069)+2.0253333) DESEMBARQUE
+
 dataset = []
 data = csv.reader(open("csv embarque padronizado.csv","r"), delimiter=';')
 for line in data:
@@ -90,11 +95,6 @@ for j in range(len(layers) * sum(layers) * 1000): # Faz o Backpropagation minimi
     Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
 
 print("Custo minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
-
-def Predict(Passageiros, Cheio):
-    entrada = np.column_stack((Passageiros, Cheio))
-    Out, nd = Forward_Propagation(entrada, layers, W)
-    print("Tempo por Passageiro:", float((Out[-1]*1.397990069)+2.0253333)) # (Out[-1]*2.679165479)+2.446792929 EMBARQUE; (Out[-1]*1.397990069)+2.0253333) DESEMBARQUE
 
 # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
 Predict(1,2)
