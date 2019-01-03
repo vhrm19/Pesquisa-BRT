@@ -1,22 +1,6 @@
 import numpy as np
 import csv
 
-def ReLU(x):
-    if funcao == 0:
-        return x * (x > 0) # ReLU
-    if funcao == 1:
-        return np.tanh(x) # Tanh
-    if funcao == 2:
-        return 1 / (1 + np.exp(-x)) # Sigmoid
-
-def dReLU(x):
-    if funcao == 0:
-        return 1 * (x > 0)
-    if funcao == 1:
-        return 1 - np.tanh(x)**2
-    if funcao == 2:
-        return np.exp(-x) / (1 + np.exp(-x))**2
-
 def bias(x):
     return np.vstack((x, np.full(len(x.T), 0))) # Ultimo número determina o bias
 
@@ -40,7 +24,7 @@ def Forward_Propagation(input, layers, W):
     for i in range(len(layers)):
         a[i] = CS(a[i])
         Z.append(np.dot(a[i], W[i])) # Calcula a entrada * pesos
-        a.append(ReLU(Z[i])) # Aplica a função de ativação
+        a.append(sigma(Z[i])) # Aplica a função de ativação
     return a, Z 
 
 def Backpropagation(y, A, Z, w):
@@ -48,22 +32,29 @@ def Backpropagation(y, A, Z, w):
     d = []
     for i in range(len(W)): # Calcula as derivadas parciais (gradientes) referentes a cada layer
         if i == 0:
-            d.append(np.multiply(y - A[-1], -dReLU(Z[-i+len(W)-1])))
+            d.append(np.multiply(y - A[-1], -dsigma(Z[-i+len(W)-1])))
         else:
-            d.append(np.multiply(np.dot(d[i-1], np.delete(w[-i+len(w)].T, -1, 1)), (dReLU(Z[-i+len(W)-1]))))
+            d.append(np.multiply(np.dot(d[i-1], np.delete(w[-i+len(w)].T, -1, 1)), (dsigma(Z[-i+len(W)-1]))))
         Grad.append(np.dot(A[-i+len(W)-1].T, d[i]) - lamb*w[-i+len(W)-1])
     return Grad
 
 def Predict(Passageiros, Cheio):
     entrada = np.column_stack((Passageiros, Cheio))
     Out, nd = Forward_Propagation(entrada, layers, W)
-    print("Tempo por Passageiro:", float((Out[-1]*1.397990069)+2.0253333)) # (Out[-1]*2.679165479)+2.446792929 EMBARQUE; (Out[-1]*1.397990069)+2.0253333) DESEMBARQUE
+    print("Tempo por Passageiro:", float(Out[-1]*desv+media))
+
+def Padroniza(x):
+    media = np.mean(x, 0)
+    desv = np.std(x, 0)
+    x = (x - media) / desv
+    return x, desv[0], media[0]
 
 dataset = []
-data = csv.reader(open("csv embarque padronizado.csv","r"), delimiter=';')
+data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
 for line in data:
     line = [float(elemento) for elemento in line]
     dataset.append(line)
+dataset, desv, media = Padroniza(dataset)
 Tempo_por_Passageiro, Passageiros, Em_pe = [], [], []
 for i in range(len(dataset)):
     Tempo_por_Passageiro.append([dataset[i][0]])
@@ -74,6 +65,22 @@ Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
 
 funcao = 0 # Determinar funcao de ativacao: 0 = ReLU, 1 = Tanh, 2 = Sigmoid
 
+if funcao == 0:
+    def sigma(x):
+        return x * (x > 0) # ReLU
+    def dsigma(x):
+        return 1 * (x > 0)
+elif funcao == 1:
+    def sigma(x):
+        return np.tanh(x) # Tanh
+    def dsigma(x):
+        return np.tanh(x)
+elif funcao == 2:
+    def sigma(x):
+        return 1 / (1 + np.exp(-x)) # Sigmoid
+    def dsigma(x):
+        return np.exp(-x) / (1 + np.exp(-x))**2        
+
 layers = [1] # Layers com seus respectivos neuronios
 
 lamb = 0 # Parametro lambda da Regularização L2
@@ -82,17 +89,11 @@ np.random.seed(0) # Pesos aleatórios iniciais
 
 W = Initial_Weights(Entrada, layers)
 
-a, Z = Forward_Propagation(Entrada, layers, W)
-
-Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
-
-print("Custo nao minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
-
 for j in range(len(layers) * sum(layers) * 1000): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
-    for i in range(len(W)):
-        W[i] -= (10**(-len(layers)) / len(Entrada)) * Grad[-i+len(W)-1]
     a, Z = Forward_Propagation(Entrada, layers, W)
     Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
+    for i in range(len(W)):
+        W[i] -= (10**(-len(layers)) / len(Entrada)) * Grad[-i+len(W)-1]
 
 print("Custo minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
 
