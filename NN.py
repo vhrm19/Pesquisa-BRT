@@ -49,8 +49,31 @@ def Padroniza(x):
     x = (x - media) / desv
     return x, desv[0], media[0]
 
+def Gradient_checking(w, grad):
+    h = 0.0001
+    V2 = []
+    V1 = []
+    for i in range(len(w)):
+        for j in range(len(w[i])):
+            for k in range(len(w[i][j])):
+                w[i][j][k] += h
+                a, nd = Forward_Propagation(Entrada, layers, w)
+                loss2 = sum(0.5 * (Tempo_por_Passageiro - a[-1])**2)
+                w[i][j][k] -= 2*h
+                a, nd = Forward_Propagation(Entrada, layers, w)
+                loss1 = sum(0.5 * (Tempo_por_Passageiro - a[-1])**2)
+                V2.append((loss2 - loss1) / (2 * h))
+                w[i][j][k] += h
+    for i in range(len(grad)):
+        for j in range(len(grad[i])):
+            for k in range(len(grad[i][j])):
+                V1.append(grad[i][j][k])
+    print(V1)
+    print(V2)
+    print(np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
+
 dataset = []
-data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
+data = csv.reader(open("csv embarque.csv","r"), delimiter=';')
 for line in data:
     line = [float(elemento) for elemento in line]
     dataset.append(line)
@@ -74,7 +97,7 @@ elif funcao == 1:
     def sigma(x):
         return np.tanh(x) # Tanh
     def dsigma(x):
-        return np.tanh(x)
+        return 1 - np.tanh(x)**2
 elif funcao == 2:
     def sigma(x):
         return 1 / (1 + np.exp(-x)) # Sigmoid
@@ -99,3 +122,5 @@ print("Custo minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
 
 # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
 Predict(1,2)
+
+Gradient_checking(W, Grad[::-1])
