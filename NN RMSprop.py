@@ -68,12 +68,10 @@ def Gradient_checking(w, grad):
         for j in range(len(grad[i])):
             for k in range(len(grad[i][j])):
                 V1.append(grad[i][j][k])
-    print(V1)
-    print(V2)
-    print(np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
+    print('Gradient checking:',np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
 
 dataset = []
-data = csv.reader(open("csv embarque.csv","r"), delimiter=';')
+data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
 for line in data:
     line = [float(elemento) for elemento in line]
     dataset.append(line)
@@ -104,7 +102,7 @@ elif funcao == 2:
     def dsigma(x):
         return np.exp(-x) / (1 + np.exp(-x))**2        
 
-layers = [1] # Layers com seus respectivos neuronios
+layers = [3,2,1] # Layers com seus respectivos neuronios
 
 lamb = 0 # Parametro lambda da Regularização L2
 
@@ -112,14 +110,18 @@ np.random.seed(0) # Pesos aleatórios iniciais
 
 W = Initial_Weights(Entrada, layers)
 
-S = [0] # squared gradient
+S = [0] # Squared gradient
 
-for j in range(820): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
+for j in range(300): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
     a, Z = Forward_Propagation(Entrada, layers, W)
     Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
+    if j == 0:
+        for i in range(len(Grad)):
+            S.append(0.9 * S[0] + 0.1 * Grad[i]**2)
     for i in range(len(W)):
-        S.append(0.9 * S[i] + 0.1 * Grad[i]**2)
-        W[i] -= (0.001 / np.sqrt(S[i+1] + 10E-6)) * Grad[i]
+        if j != 0:
+            S[i+1] = 0.9 * S[i+1] + 0.1 * Grad[i]**2
+        W[i] -= (0.001 / (S[i+1] + 10E-6)**0.5) * Grad[i]        
 
 print("Custo minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
 
