@@ -3,22 +3,13 @@ import csv
 
 def Initial_Weights(input, layers): 
     W = []
-    S = [] # Squared gradient
-    V = []
-    S_hat = []
-    V_hat = []
     for i in range(len(layers)):
         if i == 0:
             W.append(np.random.rand(len(input.T), layers[i])) # Gera pesos aleatorios de acordo com o shape da NN
         else:
             W.append(np.random.rand(layers[i-1], layers[i]))
         W[i] = np.vstack((W[i], np.full(len(W[i].T), 0.1))) # Ultimo número determina o bias
-    for i in range(len(W)):
-        S.append(np.zeros_like(W[i]))
-        S_hat.append(np.zeros_like(W[i]))
-        V.append(np.zeros_like(W[i]))
-        V_hat.append(np.zeros_like(W[i]))
-    return W, S, V, S_hat, V_hat
+    return W
 
 def Forward_Propagation(input, layers, W):
     Z = []
@@ -73,7 +64,16 @@ def Gradient_checking(w, grad):
                 V1.append(grad[i][j][k])
     print("Gradient checking:", np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
 
-def Minimiza(Entrada, layers, W, S, V, V_hat, S_hat, inter):
+def Minimiza(Entrada, layers, W, inter):
+    S = [] # Squared gradient
+    V = []
+    S_hat = []
+    V_hat = []
+    for i in range(len(W)):
+        S.append(np.zeros_like(W[i]))
+        S_hat.append(np.zeros_like(W[i]))
+        V.append(np.zeros_like(W[i]))
+        V_hat.append(np.zeros_like(W[i]))
     for j in range(inter): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
         a, Z = Forward_Propagation(Entrada, layers, W)
         Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
@@ -122,15 +122,15 @@ elif funcao == 2:
 
 Entrada, Tempo_por_Passageiro, desv, media = Dataset()
 
-layers = [3,2,1] # Layers com seus respectivos neuronios
+layers = [3, 2, 1] # Layers com seus respectivos neuronios
 
 lamb = 0 # Parametro lambda da Regularização L2
 
 np.random.seed(0) # Pesos aleatórios iniciais
 
-W, S, V, S_hat, V_hat = Initial_Weights(Entrada, layers)
+W = Initial_Weights(Entrada, layers)
 
-W, Grad = Minimiza(Entrada, layers, W, S, V, V_hat, S_hat, inter = 1000)
+W, Grad = Minimiza(Entrada, layers, W, inter = 1000)
 
 Gradient_checking(W, Grad)
 
