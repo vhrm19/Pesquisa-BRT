@@ -9,13 +9,16 @@ def CS(x):
 
 def Initial_Weights(input, layers): 
     W = []
+    S = [0] # Squared gradient
     for i in range(len(layers)):
         if i == 0:
             W.append(np.random.rand(len(input.T), layers[i])) # Gera pesos aleatorios de acordo com o shape da NN
         else:
             W.append(np.random.rand(layers[i-1], layers[i]))
         W[i] = bias(W[i])
-    return W 
+    for i in range(len(W)):
+        S.append(np.zeros_like(W[i]))
+    return W, S
 
 def Forward_Propagation(input, layers, W):
     Z = []
@@ -108,19 +111,13 @@ lamb = 0 # Parametro lambda da Regularização L2
 
 np.random.seed(0) # Pesos aleatórios iniciais
 
-W = Initial_Weights(Entrada, layers)
+W, S = Initial_Weights(Entrada, layers)
 
-S = [0] # Squared gradient
-
-for j in range(300): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
+for j in range(435): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
     a, Z = Forward_Propagation(Entrada, layers, W)
     Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
-    if j == 0:
-        for i in range(len(Grad)):
-            S.append(0.9 * S[0] + 0.1 * Grad[i]**2)
     for i in range(len(W)):
-        if j != 0:
-            S[i+1] = 0.9 * S[i+1] + 0.1 * Grad[i]**2
+        S[i+1] = 0.9 * S[i+1] + 0.1 * Grad[i]**2
         W[i] -= (0.001 / (S[i+1] + 10E-6)**0.5) * Grad[i]        
 
 print("Custo minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
