@@ -10,7 +10,7 @@ def Initial_Weights(input, layers):
             W.append(np.random.rand(len(input.T), layers[i])) # Gera pesos aleatorios de acordo com o shape da NN
         else:
             W.append(np.random.rand(layers[i-1], layers[i]))
-        W[i] = np.vstack((W[i], np.full(len(W[i].T), 0))) # Ultimo número determina o bias
+        W[i] = np.vstack((W[i], np.full(len(W[i].T), 0.1))) # Ultimo número determina o bias
     for i in range(len(W)):
         S.append(np.zeros_like(W[i]))
     for i in range(len(W)):
@@ -129,7 +129,7 @@ np.random.seed(0) # Pesos aleatórios iniciais
 
 W, S, V = Initial_Weights(Entrada, layers)
 
-W, Grad = Minimiza(Entrada, layers, W, S, V, inter = 1000)
+W, Grad = Minimiza(Entrada, layers, W, S, V, inter = 500)
 
 Gradient_checking(W, Grad)
 
