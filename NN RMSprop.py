@@ -1,12 +1,6 @@
 import numpy as np
 import csv
 
-def bias(x):
-    return np.vstack((x, np.full(len(x.T), 0))) # Ultimo número determina o bias
-
-def CS(x):
-    return np.column_stack((x, np.ones(len(x)).T))
-
 def Initial_Weights(input, layers): 
     W = []
     S = [0] # Squared gradient
@@ -15,7 +9,7 @@ def Initial_Weights(input, layers):
             W.append(np.random.rand(len(input.T), layers[i])) # Gera pesos aleatorios de acordo com o shape da NN
         else:
             W.append(np.random.rand(layers[i-1], layers[i]))
-        W[i] = bias(W[i])
+        W[i] = np.vstack((W[i], np.full(len(W[i].T), 0))) # Ultimo número determina o bias
     for i in range(len(W)):
         S.append(np.zeros_like(W[i]))
     return W, S
@@ -25,7 +19,7 @@ def Forward_Propagation(input, layers, W):
     a = []
     a.append(input) # Adiciona uma coluna de zeros na entrada
     for i in range(len(layers)):
-        a[i] = CS(a[i])
+        a[i] = np.column_stack((a[i], np.ones(len(a[i])).T))
         Z.append(np.dot(a[i], W[i])) # Calcula a entrada * pesos
         a.append(sigma(Z[i])) # Aplica a função de ativação
     return a, Z 
@@ -71,21 +65,33 @@ def Gradient_checking(w, grad):
         for j in range(len(grad[i])):
             for k in range(len(grad[i][j])):
                 V1.append(grad[i][j][k])
-    print('Gradient checking:',np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
+    print("Gradient checking:", np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
 
-dataset = []
-data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
-for line in data:
-    line = [float(elemento) for elemento in line]
-    dataset.append(line)
-dataset, desv, media = Padroniza(dataset)
-Tempo_por_Passageiro, Passageiros, Em_pe = [], [], []
-for i in range(len(dataset)):
-    Tempo_por_Passageiro.append([dataset[i][0]])
-    Passageiros.append([dataset[i][1]])
-    Em_pe.append([dataset[i][2]])
-Entrada = np.column_stack((Passageiros,Em_pe))
-Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
+def Minimiza(Entrada, layers, W, S, inter):
+    for j in range(inter): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
+        a, Z = Forward_Propagation(Entrada, layers, W)
+        Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
+        for i in range(len(W)):
+            S[i+1] = 0.9 * S[i+1] + 0.1 * Grad[i]**2
+            W[i] -= (0.001 / (S[i+1] + 10E-6)**0.5) * Grad[i]
+    print("Custo minimizado:", float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
+    return W, Grad
+
+def Dataset():
+    dataset = []
+    data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
+    for line in data:
+        line = [float(elemento) for elemento in line]
+        dataset.append(line)
+    dataset, desv, media = Padroniza(dataset)
+    Tempo_por_Passageiro, Passageiros, Em_pe = [], [], []
+    for i in range(len(dataset)):
+        Tempo_por_Passageiro.append([dataset[i][0]])
+        Passageiros.append([dataset[i][1]])
+        Em_pe.append([dataset[i][2]])
+    Entrada = np.column_stack((Passageiros,Em_pe))
+    Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
+    return Entrada, Tempo_por_Passageiro, desv, media
 
 funcao = 0 # Determinar funcao de ativacao: 0 = ReLU, 1 = Tanh, 2 = Sigmoid
 
@@ -105,6 +111,8 @@ elif funcao == 2:
     def dsigma(x):
         return np.exp(-x) / (1 + np.exp(-x))**2        
 
+Entrada, Tempo_por_Passageiro, desv, media = Dataset()
+
 layers = [3,2,1] # Layers com seus respectivos neuronios
 
 lamb = 0 # Parametro lambda da Regularização L2
@@ -113,16 +121,8 @@ np.random.seed(0) # Pesos aleatórios iniciais
 
 W, S = Initial_Weights(Entrada, layers)
 
-for j in range(435): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
-    a, Z = Forward_Propagation(Entrada, layers, W)
-    Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
-    for i in range(len(W)):
-        S[i+1] = 0.9 * S[i+1] + 0.1 * Grad[i]**2
-        W[i] -= (0.001 / (S[i+1] + 10E-6)**0.5) * Grad[i]        
-
-print("Custo minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
-
-# Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
-Predict(1,2)
+W, Grad = Minimiza(Entrada, layers, W, S, inter = 434)
 
 Gradient_checking(W, Grad)
+
+Predict(1,2) # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
