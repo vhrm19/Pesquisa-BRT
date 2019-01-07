@@ -5,6 +5,8 @@ def Initial_Weights(input, layers):
     W = []
     S = [] # Squared gradient
     V = []
+    S_hat = []
+    V_hat = []
     for i in range(len(layers)):
         if i == 0:
             W.append(np.random.rand(len(input.T), layers[i])) # Gera pesos aleatorios de acordo com o shape da NN
@@ -13,9 +15,10 @@ def Initial_Weights(input, layers):
         W[i] = np.vstack((W[i], np.full(len(W[i].T), 0.1))) # Ultimo número determina o bias
     for i in range(len(W)):
         S.append(np.zeros_like(W[i]))
-    for i in range(len(W)):
+        S_hat.append(np.zeros_like(W[i]))
         V.append(np.zeros_like(W[i]))
-    return W, S, V
+        V_hat.append(np.zeros_like(W[i]))
+    return W, S, V, S_hat, V_hat
 
 def Forward_Propagation(input, layers, W):
     Z = []
@@ -70,17 +73,15 @@ def Gradient_checking(w, grad):
                 V1.append(grad[i][j][k])
     print("Gradient checking:", np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
 
-def Minimiza(Entrada, layers, W, S, V, inter):
-    S_hat = []
-    V_hat = []
+def Minimiza(Entrada, layers, W, S, V, V_hat, S_hat, inter):
     for j in range(inter): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
         a, Z = Forward_Propagation(Entrada, layers, W)
         Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
         for i in range(len(W)):
             V[i] = 0.9 * V[i] + 0.1 * Grad[i]
             S[i] = 0.999 * S[i] + 0.001 * Grad[i]**2
-            V_hat.append(V[i] / 0.1)
-            S_hat.append(S[i] / 0.001)
+            V_hat[i] = V[i] / 0.1
+            S_hat[i] = S[i] / 0.001
             W[i] -= (0.001 / (S_hat[i] + 10E-8)**0.5) * V_hat[i]
     print("Custo minimizado:", float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
     return W, Grad
@@ -121,15 +122,15 @@ elif funcao == 2:
 
 Entrada, Tempo_por_Passageiro, desv, media = Dataset()
 
-layers = [1] # Layers com seus respectivos neuronios
+layers = [3,2,1] # Layers com seus respectivos neuronios
 
 lamb = 0 # Parametro lambda da Regularização L2
 
 np.random.seed(0) # Pesos aleatórios iniciais
 
-W, S, V = Initial_Weights(Entrada, layers)
+W, S, V, S_hat, V_hat = Initial_Weights(Entrada, layers)
 
-W, Grad = Minimiza(Entrada, layers, W, S, V, inter = 500)
+W, Grad = Minimiza(Entrada, layers, W, S, V, V_hat, S_hat, inter = 1000)
 
 Gradient_checking(W, Grad)
 
