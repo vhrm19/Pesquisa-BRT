@@ -1,12 +1,6 @@
 import numpy as np
 import csv
 
-def bias(x):
-    return np.vstack((x, np.full(len(x.T), 0))) # Ultimo número determina o bias
-
-def CS(x):
-    return np.column_stack((x, np.ones(len(x)).T))
-
 def Initial_Weights(input, layers): 
     W = []
     for i in range(len(layers)):
@@ -14,15 +8,15 @@ def Initial_Weights(input, layers):
             W.append(np.random.rand(len(input.T), layers[i])) # Gera pesos aleatorios de acordo com o shape da NN
         else:
             W.append(np.random.rand(layers[i-1], layers[i]))
-        W[i] = bias(W[i])
-    return W 
+        W[i] = np.vstack((W[i], np.full(len(W[i].T), 0))) # Ultimo número determina o bias
+    return W
 
 def Forward_Propagation(input, layers, W):
     Z = []
     a = []
     a.append(input) # Adiciona uma coluna de zeros na entrada
     for i in range(len(layers)):
-        a[i] = CS(a[i])
+        a[i] = np.column_stack((a[i], np.ones(len(a[i])).T))
         Z.append(np.dot(a[i], W[i])) # Calcula a entrada * pesos
         a.append(sigma(Z[i])) # Aplica a função de ativação
     return a, Z 
@@ -36,18 +30,18 @@ def Backpropagation(y, A, Z, w):
         else:
             d.append(np.multiply(np.dot(d[i-1], np.delete(w[-i+len(w)].T, -1, 1)), (dsigma(Z[-i+len(W)-1]))))
         Grad.append(np.dot(A[-i+len(W)-1].T, d[i]) - lamb*w[-i+len(W)-1])
-    return Grad
+    return Grad[::-1]
 
 def Predict(Passageiros, Cheio):
     entrada = np.column_stack((Passageiros, Cheio))
     Out, nd = Forward_Propagation(entrada, layers, W)
-    print("Tempo por Passageiro:", float(Out[-1]*desv+media))
+    print("Tempo por Passageiro:", float(Out[-1]))
 
 def Padroniza(x):
     media = np.mean(x, 0)
     desv = np.std(x, 0)
     x = (x - media) / desv
-    return x, desv[0], media[0]
+    return x
 
 def Gradient_checking(w, grad):
     h = 0.0001
@@ -68,23 +62,30 @@ def Gradient_checking(w, grad):
         for j in range(len(grad[i])):
             for k in range(len(grad[i][j])):
                 V1.append(grad[i][j][k])
-    print(V1)
-    print(V2)
-    print(np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
+    print("Gradient checking:", np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
 
-dataset = []
-data = csv.reader(open("csv embarque.csv","r"), delimiter=';')
-for line in data:
-    line = [float(elemento) for elemento in line]
-    dataset.append(line)
-dataset, desv, media = Padroniza(dataset)
-Tempo_por_Passageiro, Passageiros, Em_pe = [], [], []
-for i in range(len(dataset)):
-    Tempo_por_Passageiro.append([dataset[i][0]])
-    Passageiros.append([dataset[i][1]])
-    Em_pe.append([dataset[i][2]])
-Entrada = np.column_stack((Passageiros,Em_pe))
-Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
+def Minimiza(Entrada, layers, W, inter):
+    for j in range(inter): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
+        a, Z = Forward_Propagation(Entrada, layers, W)
+        Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
+        W = Gradient_algorithm(W, Grad)
+    print("Custo minimizado:", float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
+    return W, Grad
+
+def Dataset():
+    dataset = []
+    data = csv.reader(open("csv embarque.csv","r"), delimiter=';')
+    for line in data:
+        line = [float(elemento) for elemento in line]
+        dataset.append(line)
+    Tempo_por_Passageiro, Passageiros, Em_pe = [], [], []
+    for i in range(len(dataset)):
+        Tempo_por_Passageiro.append([dataset[i][0]])
+        Passageiros.append([dataset[i][1]])
+        Em_pe.append([dataset[i][2]])
+    Entrada = Padroniza(np.column_stack((Passageiros,Em_pe))) # Padroniza somente a saída
+    Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
+    return Entrada, Tempo_por_Passageiro
 
 funcao = 0 # Determinar funcao de ativacao: 0 = ReLU, 1 = Tanh, 2 = Sigmoid
 
@@ -104,7 +105,38 @@ elif funcao == 2:
     def dsigma(x):
         return np.exp(-x) / (1 + np.exp(-x))**2        
 
-layers = [1] # Layers com seus respectivos neuronios
+algoritmo = 1 # Determinar o algoritmo de gradiente: 0 = SGD, 1 = Adam, 2 = RMSprop
+
+if algoritmo == 0:
+    def Gradient_algorithm(W, Grad):
+        for i in range(len(W)):
+            W[i] -= (10**(-len(layers)) / len(Entrada)) * Grad[i]
+        return W
+        
+elif algoritmo == 1:
+    def Gradient_algorithm(W, Grad):
+        S = [] # Squared gradient
+        V = [] # Exponential moving average of gradients
+        for i in range(len(W)):
+            S.append(np.zeros_like(W[i]))
+            V.append(np.zeros_like(W[i]))
+            V[i] = (0.9 * V[i] + 0.1 * Grad[i]) / 0.1
+            S[i] = (0.999 * S[i] + 0.001 * Grad[i]**2) / 0.001
+            W[i] -= (0.001 / (S[i] + 10E-8)**0.5) * V[i]
+        return W
+
+elif algoritmo == 2:
+    def Gradient_algorithm(W, Grad):
+        S = [] # Squared gradient
+        for i in range(len(W)):
+            S.append(np.zeros_like(W[i]))
+            S[i] =  0.9 * S[i] + 0.1 * Grad[i]**2
+            W[i] -= (0.001 / (S[i] + 10E-6)**0.5) * Grad[i]
+        return W
+
+Entrada, Tempo_por_Passageiro = Dataset()
+
+layers = [3,2,1] # Layers com seus respectivos neuronios
 
 lamb = 0 # Parametro lambda da Regularização L2
 
@@ -112,15 +144,8 @@ np.random.seed(0) # Pesos aleatórios iniciais
 
 W = Initial_Weights(Entrada, layers)
 
-for j in range(len(layers) * sum(layers) * 1000): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
-    a, Z = Forward_Propagation(Entrada, layers, W)
-    Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
-    for i in range(len(W)):
-        W[i] -= (10**(-len(layers)) / len(Entrada)) * Grad[-i+len(W)-1]
+W, Grad = Minimiza(Entrada, layers, W, inter = 1000)
 
-print("Custo minimizado:" , float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2))
+Gradient_checking(W, Grad)
 
-# Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
-Predict(1,2)
-
-Gradient_checking(W, Grad[::-1])
+Predict(1,2) # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
