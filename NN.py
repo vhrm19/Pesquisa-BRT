@@ -65,7 +65,7 @@ def Gradient_checking(w, grad):
     print("Gradient checking:", np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
 
 def Minimiza(Entrada, layers, W, inter):
-    for j in range(inter): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
+    for _ in range(inter): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
         a, Z = Forward_Propagation(Entrada, layers, W)
         Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
         W = Gradient_algorithm(W, Grad)
@@ -83,7 +83,7 @@ def Dataset():
         Tempo_por_Passageiro.append([dataset[i][0]])
         Passageiros.append([dataset[i][1]])
         Em_pe.append([dataset[i][2]])
-    Entrada = Padroniza(np.column_stack((Passageiros,Em_pe))) # Padroniza somente a saída
+    Entrada = Padroniza(np.column_stack((Passageiros,Em_pe))) # Padroniza somente a entrada
     Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
     return Entrada, Tempo_por_Passageiro
 
@@ -105,7 +105,7 @@ elif funcao == 2:
     def dsigma(x):
         return np.exp(-x) / (1 + np.exp(-x))**2        
 
-algoritmo = 1 # Determinar o algoritmo de gradiente: 0 = SGD, 1 = Adam, 2 = RMSprop
+algoritmo = 4 # Determinar o algoritmo de gradiente: 0 = SGD, 1 = Adam, 2 = RMSprop, 3 = AdaMax, 4 = AMSGrad
 
 if algoritmo == 0:
     def Gradient_algorithm(W, Grad):
@@ -132,6 +132,33 @@ elif algoritmo == 2:
             S.append(np.zeros_like(W[i]))
             S[i] =  0.9 * S[i] + 0.1 * Grad[i]**2
             W[i] -= (0.001 / (S[i] + 10E-6)**0.5) * Grad[i]
+        return W
+
+elif algoritmo == 3:
+    def Gradient_algorithm(W, Grad):
+        S = [] # Squared gradient
+        V = [] # Exponential moving average of gradients
+        for i in range(len(W)):
+            S.append(np.zeros_like(W[i]))
+            V.append(np.zeros_like(W[i]))
+            V[i] = (0.9 * V[i] + 0.1 * Grad[i]) / 0.1
+            S[i] = np.maximum(0.999 * S[i], np.linalg.norm(Grad[i]))
+            W[i] -= (0.001 / (S[i] + 10E-8)**0.5) * V[i]
+        return W
+
+elif algoritmo == 4:
+    def Gradient_algorithm(W, Grad):
+        S = [] # Squared gradient
+        V = [] # Exponential moving average of gradients
+        S_hat = []
+        for i in range(len(W)):
+            S.append(np.zeros_like(W[i]))
+            V.append(np.zeros_like(W[i]))
+            S_hat.append(np.zeros_like(W[i]))
+            V[i] = 0.9 * V[i] + 0.1 * Grad[i]
+            S[i] = 0.999 * S[i] + 0.001 * Grad[i]**2
+            S_hat[i] = np.maximum(S_hat[i], S[i])
+            W[i] -= (0.001 / (S_hat[i] + 10E-8)**0.5) * V[i]
         return W
 
 Entrada, Tempo_por_Passageiro = Dataset()
