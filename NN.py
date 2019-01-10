@@ -68,10 +68,19 @@ def Gradient_checking(w, grad):
 def Minimiza(Entrada, layers, W, inter):
     Cost = 1000000000000
     x, y = [], []
+    S = []
+    V = []
+    S_hat = []
+    V_hat = []
+    for i in range(len(W)):
+        S.append(np.zeros_like(W[i]))
+        V.append(np.zeros_like(W[i]))
+        S_hat.append(np.zeros_like(W[i]))
+        V_hat.append(np.zeros_like(W[i]))
     for i in range(inter): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
         a, Z = Forward_Propagation(Entrada, layers, W)
         Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
-        W, name = Gradient_algorithm(W, Grad)
+        W, name, V, S, S_hat, V_hat = Gradient_algorithm(W, Grad, V, S, S_hat, V_hat)
         Inst = float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2)
         x.append(Inst)
         y.append(i)
@@ -80,7 +89,7 @@ def Minimiza(Entrada, layers, W, inter):
             ponto = i
     plt.plot(y, x, label  = name)
     plt.plot(ponto, Cost, 'r+')
-    print("Iteracao:",ponto,"Minimo", Cost)
+    print("Iteracao:",ponto,"Minimo:", Cost)
     return W, Grad
 
 def Dataset():
@@ -94,7 +103,7 @@ def Dataset():
         Tempo_por_Passageiro.append([dataset[i][0]])
         Passageiros.append([dataset[i][1]])
         Em_pe.append([dataset[i][2]])
-    Entrada = np.column_stack((Passageiros,Em_pe)) # Padroniza somente a entrada
+    Entrada = Padroniza(np.column_stack((Passageiros,Em_pe))) # Padroniza somente a entrada
     Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
     return Entrada, Tempo_por_Passageiro
 
@@ -122,66 +131,53 @@ for i in range(5):
     if algoritmo == 0:
         name = 'SGD'
         print(name)
-        def Gradient_algorithm(W, Grad):
+        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
             for i in range(len(W)):
                 W[i] -= (10**(-len(layers)) / len(Entrada)) * Grad[i]
-            return W, name
+            return W, name, V, S, S_hat, V_hat
             
     elif algoritmo == 1:
         name = 'Adam'
         print(name)
-        def Gradient_algorithm(W, Grad):
-            S = [] # Squared gradient
-            V = [] # Exponential moving average of gradients
+        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
             for i in range(len(W)):
-                S.append(np.zeros_like(W[i]))
-                V.append(np.zeros_like(W[i]))
-                V[i] = (0.9 * V[i] + 0.1 * Grad[i]) / 0.1
-                S[i] = (0.999 * S[i] + 0.001 * Grad[i]**2) / 0.001
-                W[i] -= (0.001 / (S[i] + 10E-8)**0.5) * V[i]
-            return W, name
+                V[i] = 0.9 * V[i] + 0.1 * Grad[i]
+                V_hat[i] = V[i] / 0.1
+                S[i] = 0.999 * S[i] + 0.001 * Grad[i]**2
+                S_hat[i] = S[i] / 0.001
+                W[i] -= (0.001 / (S_hat[i] + 10E-8)**0.5) * V_hat[i]
+            return W, name, V, S, S_hat, V_hat
 
     elif algoritmo == 2:
         name = 'RMSprop'
         print(name)
-        def Gradient_algorithm(W, Grad):
-            S = [] # Squared gradient
+        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
             for i in range(len(W)):
-                S.append(np.zeros_like(W[i]))
                 S[i] =  0.9 * S[i] + 0.1 * Grad[i]**2
                 W[i] -= (0.001 / (S[i] + 10E-6)**0.5) * Grad[i]
-            return W, name
+            return W, name, V, S, S_hat, V_hat
 
     elif algoritmo == 3:
         name = 'AdaMax'
         print(name)
-        def Gradient_algorithm(W, Grad):
-            S = [] # Squared gradient
-            V = [] # Exponential moving average of gradients
+        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
             for i in range(len(W)):
-                S.append(np.zeros_like(W[i]))
-                V.append(np.zeros_like(W[i]))
-                V[i] = (0.9 * V[i] + 0.1 * Grad[i]) / 0.1
+                V[i] = 0.9 * V[i] + 0.1 * Grad[i]
+                V_hat[i] = V[i] / 0.1
                 S[i] = np.maximum(0.999 * S[i], np.linalg.norm(Grad[i]))
-                W[i] -= (0.001 / (S[i] + 10E-8)**0.5) * V[i]
-            return W, name
+                W[i] -= (0.002 / S[i]) * V_hat[i]
+            return W, name, V, S, S_hat, V_hat
 
     elif algoritmo == 4:
         name = 'AMSGrad'
         print(name)
-        def Gradient_algorithm(W, Grad):
-            S = [] # Squared gradient
-            V = [] # Exponential moving average of gradients
-            S_hat = []
+        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
             for i in range(len(W)):
-                S.append(np.zeros_like(W[i]))
-                V.append(np.zeros_like(W[i]))
-                S_hat.append(np.zeros_like(W[i]))
                 V[i] = 0.9 * V[i] + 0.1 * Grad[i]
                 S[i] = 0.999 * S[i] + 0.001 * Grad[i]**2
                 S_hat[i] = np.maximum(S_hat[i], S[i])
                 W[i] -= (0.001 / (S_hat[i] + 10E-8)**0.5) * V[i]
-            return W, name
+            return W, name, V, S, S_hat, V_hat
 
     Entrada, Tempo_por_Passageiro = Dataset()
 
