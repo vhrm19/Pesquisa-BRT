@@ -2,6 +2,28 @@ import numpy as np
 import csv
 import matplotlib.pyplot as plt
 
+def Dataset():
+    dataset = []
+    data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
+    for line in data:
+        line = [float(elemento) for elemento in line]
+        dataset.append(line)
+    Tempo_por_Passageiro, Passageiros, Em_pe = [], [], []
+    for i in range(len(dataset)):
+        Tempo_por_Passageiro.append([dataset[i][0]])
+        Passageiros.append([dataset[i][1]])
+        Em_pe.append([dataset[i][2]])
+    # Entrada = np.column_stack((Passageiros,Em_pe)) # Padroniza somente a entrada
+    Entrada = Padroniza(np.column_stack((Passageiros,Em_pe))) # Padroniza somente a entrada
+    Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
+    return Entrada, Tempo_por_Passageiro
+
+def Padroniza(x):
+    media = np.mean(x, 0)
+    desv = np.std(x, 0)
+    x = (x - media) / desv
+    return x
+
 def Initial_Weights(input, layers): 
     W = []
     for i in range(len(layers)):
@@ -33,38 +55,6 @@ def Backpropagation(y, A, Z, w):
         Grad.append(np.dot(A[-i+len(W)-1].T, d[i]) - lamb*w[-i+len(W)-1])
     return Grad[::-1]
 
-def Predict(Passageiros, Cheio):
-    entrada = np.column_stack((Passageiros, Cheio))
-    Out, nd = Forward_Propagation(entrada, layers, W)
-    print("Tempo por Passageiro:", float(Out[-1]))
-
-def Padroniza(x):
-    media = np.mean(x, 0)
-    desv = np.std(x, 0)
-    x = (x - media) / desv
-    return x
-
-def Gradient_checking(w, grad):
-    h = 0.0001
-    V2 = []
-    V1 = []
-    for i in range(len(w)):
-        for j in range(len(w[i])):
-            for k in range(len(w[i][j])):
-                w[i][j][k] += h
-                a, nd = Forward_Propagation(Entrada, layers, w)
-                loss2 = sum(0.5 * (Tempo_por_Passageiro - a[-1])**2)
-                w[i][j][k] -= 2*h
-                a, nd = Forward_Propagation(Entrada, layers, w)
-                loss1 = sum(0.5 * (Tempo_por_Passageiro - a[-1])**2)
-                V2.append((loss2 - loss1) / (2 * h))
-                w[i][j][k] += h
-    for i in range(len(grad)):
-        for j in range(len(grad[i])):
-            for k in range(len(grad[i][j])):
-                V1.append(grad[i][j][k])
-    print("Gradient checking:", np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
-
 def Minimiza(Entrada, layers, W, inter):
     Cost = 1000000000000
     x, y = [], []
@@ -92,20 +82,31 @@ def Minimiza(Entrada, layers, W, inter):
     print("Iteracao:",ponto,"Minimo:", Cost)
     return W, Grad
 
-def Dataset():
-    dataset = []
-    data = csv.reader(open("csv embarque.csv","r"), delimiter=';')
-    for line in data:
-        line = [float(elemento) for elemento in line]
-        dataset.append(line)
-    Tempo_por_Passageiro, Passageiros, Em_pe = [], [], []
-    for i in range(len(dataset)):
-        Tempo_por_Passageiro.append([dataset[i][0]])
-        Passageiros.append([dataset[i][1]])
-        Em_pe.append([dataset[i][2]])
-    Entrada = Padroniza(np.column_stack((Passageiros,Em_pe))) # Padroniza somente a entrada
-    Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
-    return Entrada, Tempo_por_Passageiro
+def Predict(Passageiros, Cheio):
+    entrada = np.column_stack((Passageiros, Cheio))
+    Out, nd = Forward_Propagation(entrada, layers, W)
+    print("Tempo por Passageiro:", float(Out[-1]))
+
+def Gradient_checking(w, grad):
+    h = 0.0001
+    V2 = []
+    V1 = []
+    for i in range(len(w)):
+        for j in range(len(w[i])):
+            for k in range(len(w[i][j])):
+                w[i][j][k] += h
+                a, nd = Forward_Propagation(Entrada, layers, w)
+                loss2 = sum(0.5 * (Tempo_por_Passageiro - a[-1])**2)
+                w[i][j][k] -= 2*h
+                a, nd = Forward_Propagation(Entrada, layers, w)
+                loss1 = sum(0.5 * (Tempo_por_Passageiro - a[-1])**2)
+                V2.append((loss2 - loss1) / (2 * h))
+                w[i][j][k] += h
+    for i in range(len(grad)):
+        for j in range(len(grad[i])):
+            for k in range(len(grad[i][j])):
+                V1.append(grad[i][j][k])
+    print("Gradient checking:", np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
 
 funcao = 0 # Determinar funcao de ativacao: 0 = ReLU, 1 = Tanh, 2 = Sigmoid
 
@@ -164,7 +165,7 @@ for i in range(5):
             for i in range(len(W)):
                 V[i] = 0.9 * V[i] + 0.1 * Grad[i]
                 V_hat[i] = V[i] / 0.1
-                S[i] = np.maximum(0.999 * S[i], np.linalg.norm(Grad[i]))
+                S[i] = np.maximum(0.999 * S[i], np.abs(Grad[i]))
                 W[i] -= (0.002 / S[i]) * V_hat[i]
             return W, name, V, S, S_hat, V_hat
 
@@ -196,6 +197,5 @@ for i in range(5):
     Predict(1,2) # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
 plt.ylabel("Custo")
 plt.xlabel("Iteração")
-plt.axis()
 plt.legend()
 plt.show()
