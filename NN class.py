@@ -68,12 +68,14 @@ class Neural_Network:
                 if Inst < Cost:
                     Cost = Inst
                     W_hat = W
+                    Grad_hat = Grad
         print("Minimum:", Cost)
-        return W_hat, Grad
+        return W_hat, Grad_hat
 
     def Predict(self, x1, x2):
         _input = np.column_stack((x1, x2))
         W, Grad = self.Optimize()
+        print(Grad)
         self.Gradient_checking(W, Grad)
         Out, nd = self.Forward_Propagation(_input, W)
         print("Result:", float(Out[-1]))
