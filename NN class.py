@@ -1,6 +1,5 @@
 import numpy as np
 import csv
-import matplotlib.pyplot as plt
 
 class Neural_Network:
     def __init__(self, Input, Output, layers, bias, rate):
