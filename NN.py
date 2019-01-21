@@ -1,201 +1,41 @@
 import numpy as np
 import csv
-import matplotlib.pyplot as plt
+import tensorflow.keras as kr
 
-def Dataset():
-    dataset = []
-    data = csv.reader(open("csv desembarque.csv","r"), delimiter=';')
-    for line in data:
-        line = [float(elemento) for elemento in line]
-        dataset.append(line)
-    Tempo_por_Passageiro, Passageiros, Em_pe = [], [], []
-    for i in range(len(dataset)):
-        Tempo_por_Passageiro.append([dataset[i][0]])
-        Passageiros.append([dataset[i][1]])
-        Em_pe.append([dataset[i][2]])
-    # Entrada = np.column_stack((Passageiros,Em_pe)) # Padroniza somente a entrada
-    Entrada = Padroniza(np.column_stack((Passageiros,Em_pe))) # Padroniza somente a entrada
-    Tempo_por_Passageiro = np.array(Tempo_por_Passageiro)
-    return Entrada, Tempo_por_Passageiro
+class NeuralNetwork():
+    def __init__(self, Input, Output, activation = 'relu', optimizer = 'adam', epochs = 10000):
+        self.Input = Input
+        self.Output = Output
+        self.activation_function = activation
+        self.optimizer = optimizer
+        self.epochs = epochs
 
-def Padroniza(x):
-    media = np.mean(x, 0)
-    desv = np.std(x, 0)
-    x = (x - media) / desv
-    return x
+        """ 
+        Activations: softmax, elu, selu, softplus, softsign, relu, tanh, sigmoid, hard_sigmoid, exponential, linear.
 
-def Initial_Weights(input, layers): 
-    W = []
-    for i in range(len(layers)):
-        if i == 0:
-            W.append(np.random.rand(len(input.T), layers[i])) # Gera pesos aleatorios de acordo com o shape da NN
-        else:
-            W.append(np.random.rand(layers[i-1], layers[i]))
-        W[i] = np.vstack((W[i], np.full(len(W[i].T), 0))) # Ultimo número determina o bias
-    return W
+        Optimizers: SGD, RMSprop, Adagrad, Adadelta, Adam, Adamax, Nadam.
 
-def Forward_Propagation(input, layers, W):
-    Z = []
-    a = []
-    a.append(input) # Adiciona uma coluna de zeros na entrada
-    for i in range(len(layers)):
-        a[i] = np.column_stack((a[i], np.ones(len(a[i])).T))
-        Z.append(np.dot(a[i], W[i])) # Calcula a entrada * pesos
-        a.append(sigma(Z[i])) # Aplica a função de ativação
-    return a, Z 
+        Loss: MSE, MAE, MSPE, MSLE, squared_hinge, hinge, categorical_hinge, logcosh, categorical_crossentropy,
+                sparse_categorical_crossentropy, binary_crossentropy, kullback_leibler_divergence, poisson, cosine_proximity.
+        """
 
-def Backpropagation(y, A, Z, w):
-    Grad = []
-    d = []
-    for i in range(len(W)): # Calcula as derivadas parciais (gradientes) referentes a cada layer
-        if i == 0:
-            d.append(np.multiply(y - A[-1], -dsigma(Z[-i+len(W)-1])))
-        else:
-            d.append(np.multiply(np.dot(d[i-1], np.delete(w[-i+len(w)].T, -1, 1)), (dsigma(Z[-i+len(W)-1]))))
-        Grad.append(np.dot(A[-i+len(W)-1].T, d[i]) - lamb*w[-i+len(W)-1])
-    return Grad[::-1]
+        self.Model = kr.Sequential([ kr.layers.Dense(3, input_dim = self.Input[0].T.shape[0], activation = self.activation_function),
+                                kr.layers.Dense(2, activation = self.activation_function),
+                                kr.layers.Dense(1, activation = 'linear')])
+        
+        self.Model.compile(loss='MSE', optimizer= self.optimizer, metrics=['accuracy'])
+        self.Model.fit(Entrada, Tempo_por_Passageiro, epochs = self.epochs, shuffle = False, verbose = 0)
+        scores = self.Model.evaluate(Entrada, Tempo_por_Passageiro, verbose = 0)
+        print("Loss: %f, Accuracy: %f%%" % (scores[0], scores[1]*100))
+    
+    def Predict(self, X, Y):
+        print("Result:", float(self.Model.predict(np.array([[X,Y]]))))
 
-def Minimiza(Entrada, layers, W, inter):
-    Cost = 1000000000000
-    x, y = [], []
-    S = []
-    V = []
-    S_hat = []
-    V_hat = []
-    for i in range(len(W)):
-        S.append(np.zeros_like(W[i]))
-        V.append(np.zeros_like(W[i]))
-        S_hat.append(np.zeros_like(W[i]))
-        V_hat.append(np.zeros_like(W[i]))
-    for i in range(inter): # Faz o Backpropagation minimizando a função custo: 0.5 * sum(y-ŷ)**2, de acordo com o shape da NN
-        a, Z = Forward_Propagation(Entrada, layers, W)
-        Grad = Backpropagation(Tempo_por_Passageiro, a, Z, W)
-        W, name, V, S, S_hat, V_hat = Gradient_algorithm(W, Grad, V, S, S_hat, V_hat)
-        Inst = float(0.5 * sum(Tempo_por_Passageiro-a[-1])**2)
-        x.append(Inst)
-        y.append(i)
-        if Inst < Cost:
-            Cost = Inst
-            ponto = i
-    plt.plot(y, x, label  = name)
-    plt.plot(ponto, Cost, 'r+')
-    print("Iteracao:",ponto,"Minimo:", Cost)
-    return W, Grad
+if __name__ == "__main__":
 
-def Predict(Passageiros, Cheio):
-    entrada = np.column_stack((Passageiros, Cheio))
-    Out, nd = Forward_Propagation(entrada, layers, W)
-    print("Tempo por Passageiro:", float(Out[-1]))
+    dataset = np.array(list(csv.reader(open("csv embarque.csv","r"), delimiter=';'))).astype("float")
+    Entrada = np.hsplit(dataset, (0,1))[2]
+    Tempo_por_Passageiro = np.hsplit(dataset, (0,1))[1]
 
-def Gradient_checking(w, grad):
-    h = 0.0001
-    V2 = []
-    V1 = []
-    for i in range(len(w)):
-        for j in range(len(w[i])):
-            for k in range(len(w[i][j])):
-                w[i][j][k] += h
-                a, nd = Forward_Propagation(Entrada, layers, w)
-                loss2 = sum(0.5 * (Tempo_por_Passageiro - a[-1])**2)
-                w[i][j][k] -= 2*h
-                a, nd = Forward_Propagation(Entrada, layers, w)
-                loss1 = sum(0.5 * (Tempo_por_Passageiro - a[-1])**2)
-                V2.append((loss2 - loss1) / (2 * h))
-                w[i][j][k] += h
-    for i in range(len(grad)):
-        for j in range(len(grad[i])):
-            for k in range(len(grad[i][j])):
-                V1.append(grad[i][j][k])
-    print("Gradient checking:", np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T))
-
-funcao = 0 # Determinar funcao de ativacao: 0 = ReLU, 1 = Tanh, 2 = Sigmoid
-
-if funcao == 0:
-    def sigma(x):
-        return x * (x > 0) # ReLU
-    def dsigma(x):
-        return 1 * (x > 0)
-elif funcao == 1:
-    def sigma(x):
-        return np.tanh(x) # Tanh
-    def dsigma(x):
-        return 1 - np.tanh(x)**2
-elif funcao == 2:
-    def sigma(x):
-        return 1 / (1 + np.exp(-x)) # Sigmoid
-    def dsigma(x):
-        return np.exp(-x) / (1 + np.exp(-x))**2        
-
-for i in range(5):
-    algoritmo = i%5 # Determinar o algoritmo de gradiente: 0 = SGD, 1 = Adam, 2 = RMSprop, 3 = AdaMax, 4 = AMSGrad
-
-    if algoritmo == 0:
-        name = 'SGD'
-        print(name)
-        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
-            for i in range(len(W)):
-                W[i] -= (10**(-len(layers)) / len(Entrada)) * Grad[i]
-            return W, name, V, S, S_hat, V_hat
-            
-    elif algoritmo == 1:
-        name = 'Adam'
-        print(name)
-        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
-            for i in range(len(W)):
-                V[i] = 0.9 * V[i] + 0.1 * Grad[i]
-                V_hat[i] = V[i] / 0.1
-                S[i] = 0.999 * S[i] + 0.001 * Grad[i]**2
-                S_hat[i] = S[i] / 0.001
-                W[i] -= (0.001 / (S_hat[i] + 10E-8)**0.5) * V_hat[i]
-            return W, name, V, S, S_hat, V_hat
-
-    elif algoritmo == 2:
-        name = 'RMSprop'
-        print(name)
-        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
-            for i in range(len(W)):
-                S[i] =  0.9 * S[i] + 0.1 * Grad[i]**2
-                W[i] -= (0.001 / (S[i] + 10E-6)**0.5) * Grad[i]
-            return W, name, V, S, S_hat, V_hat
-
-    elif algoritmo == 3:
-        name = 'AdaMax'
-        print(name)
-        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
-            for i in range(len(W)):
-                V[i] = 0.9 * V[i] + 0.1 * Grad[i]
-                V_hat[i] = V[i] / 0.1
-                S[i] = np.maximum(0.999 * S[i], np.abs(Grad[i]))
-                W[i] -= (0.002 / S[i]) * V_hat[i]
-            return W, name, V, S, S_hat, V_hat
-
-    elif algoritmo == 4:
-        name = 'AMSGrad'
-        print(name)
-        def Gradient_algorithm(W, Grad, V, S, S_hat, V_hat):
-            for i in range(len(W)):
-                V[i] = 0.9 * V[i] + 0.1 * Grad[i]
-                S[i] = 0.999 * S[i] + 0.001 * Grad[i]**2
-                S_hat[i] = np.maximum(S_hat[i], S[i])
-                W[i] -= (0.001 / (S_hat[i] + 10E-8)**0.5) * V[i]
-            return W, name, V, S, S_hat, V_hat
-
-    Entrada, Tempo_por_Passageiro = Dataset()
-
-    layers = [3,2,1] # Layers com seus respectivos neuronios
-
-    lamb = 0 # Parametro lambda da Regularização L2
-
-    np.random.seed(0) # Pesos aleatórios iniciais
-
-    W = Initial_Weights(Entrada, layers)
-
-    W, Grad = Minimiza(Entrada, layers, W, inter = 10000)
-
-    Gradient_checking(W, Grad)
-
-    Predict(1,2) # Entrada sendo (Numero de Passageiros no Ponto, O quao cheio esta o onibus: pouco, medio ou muito [1,2 ou 3])
-plt.ylabel("Custo")
-plt.xlabel("Iteração")
-plt.legend()
-plt.show()
+    NN = NeuralNetwork(Entrada, Tempo_por_Passageiro)
+    NN.Predict(1,2)
