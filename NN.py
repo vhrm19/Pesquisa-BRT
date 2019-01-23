@@ -1,14 +1,9 @@
 import numpy as np
-import csv
 import tensorflow.keras as kr
+import csv
 
 class NeuralNetwork():
-    def __init__(self, Input, Output, activation = 'relu', optimizer = 'adam', epochs = 10000):
-        self.Input = Input
-        self.Output = Output
-        self.activation_function = activation
-        self.optimizer = optimizer
-        self.epochs = epochs
+    def __init__(self, Input, Output, activation = 'tanh', optimizer = 'adam', epochs = 10000):
 
         """ 
         Activations: softmax, elu, selu, softplus, softsign, relu, tanh, sigmoid, hard_sigmoid, exponential, linear.
@@ -16,23 +11,26 @@ class NeuralNetwork():
         Optimizers: SGD, RMSprop, Adagrad, Adadelta, Adam, Adamax, Nadam.
 
         Loss: MSE, MAE, MSPE, MSLE, squared_hinge, hinge, categorical_hinge, logcosh, categorical_crossentropy,
-                sparse_categorical_crossentropy, binary_crossentropy, kullback_leibler_divergence, poisson, cosine_proximity.
+              parse_categorical_crossentropy, binary_crossentropy, kullback_leibler_divergence, poisson, cosine_proximity.
         """
+        self.Model = kr.Sequential([kr.layers.Dense(3, input_shape = (2,), activation = activation),
+                                    kr.layers.Dense(2, activation = activation),
+                                    kr.layers.Dense(1, activation = 'linear')])
+        self.Model.compile(loss = 'MSE', optimizer= optimizer, metrics = ['acc', 'mae'])
+        self.Model.fit(Input, Output, epochs = epochs, verbose = 0)
+        evaluate =  self.Model.evaluate(Input, Output, verbose = 0)
+        print('Loss:', evaluate[0], 'Accuracy:', evaluate[1], 'MAE:', evaluate[2])
 
-        self.Model = kr.Sequential([ kr.layers.Dense(3, input_dim = self.Input[0].T.shape[0], activation = self.activation_function),
-                                kr.layers.Dense(2, activation = self.activation_function),
-                                kr.layers.Dense(1, activation = 'linear')])
-        
-        self.Model.compile(loss='MSE', optimizer= self.optimizer, metrics=['accuracy'])
-        self.Model.fit(Entrada, Tempo_por_Passageiro, epochs = self.epochs, shuffle = False, verbose = 0)
-        scores = self.Model.evaluate(Entrada, Tempo_por_Passageiro, verbose = 0)
-        print("Loss: %f, Accuracy: %f%%" % (scores[0], scores[1]*100))
-    
+        h = np.dot(np.dot(Input, np.linalg.inv(np.dot(Input.T, Input))), Input.T)
+        cost = sum(sum(((self.Model.predict(np.array(Input)) - Output) / (1 - h))**2) / len(Input)) / len(Input)
+        print("LOOCV:", cost)
+   
     def Predict(self, X, Y):
         print("Result:", float(self.Model.predict(np.array([[X,Y]]))))
 
 if __name__ == "__main__":
 
+    np.random.seed(0)
     dataset = np.array(list(csv.reader(open("csv embarque.csv","r"), delimiter=';'))).astype("float")
     Entrada = np.hsplit(dataset, (0,1))[2]
     Tempo_por_Passageiro = np.hsplit(dataset, (0,1))[1]
