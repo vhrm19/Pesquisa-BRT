@@ -22,8 +22,6 @@ class Neural_Network:
 
     def sigma(self, x):
         return x * (x > 0) # ReLU
-    def dsigma(self, x):
-        return 1 * (x > 0)
 
     def Forward_Propagation(self, _input, W):
         a = []
@@ -41,44 +39,39 @@ class Neural_Network:
         return 1/ len(self.Output) * sum((self.Output - y_hat[-1])**2)
 
     def GWO(self):
-        x = []
+        Agents = 5
+
         y = []
-
-        Agents = 10
-
-        W = self.Random_Weights()
-        Alpha = np.zeros_like(W)
-        Alpha_score=float("inf")
-        Beta = np.zeros_like(W)
-        Beta_score=float("inf")
-        Delta = np.zeros_like(W)
-        Delta_score=float("inf")
+        x = []
+        W = []
         
-        for i in range(self.rate):
+        W_fit = np.zeros(Agents)
+        Alpha = np.zeros_like(self.Random_Weights())
+        Alpha_score=float("inf")
+        Beta = np.zeros_like(self.Random_Weights())
+        Beta_score=float("inf")
+        Delta = np.zeros_like(self.Random_Weights())
+        Delta_score=float("inf")
+
+        for i in range(Agents):
+            np.random.seed(i)
+            W.append(self.Random_Weights())
+            x.append([])
+        
+        for l in range(self.rate):
+            
+            a = 2 - l * 2 / self.rate
+
             for j in range(Agents):
-                fitness = self.MSE(W)
-
-                if fitness < Alpha_score:
-                    Alpha_score = fitness
-                    Alpha = W.copy()
-                if fitness > Alpha_score and fitness < Beta_score:
-                    Beta_score = fitness
-                    Beta = W.copy()
-                if fitness > Alpha_score and fitness > Beta_score and fitness < Delta_score:
-                    Delta_score = fitness
-                    Delta = W.copy()
-
-            a = 2 - i * 2 / self.rate
-
-            for l in range(Agents):
                 for k in range(len(self.layers)):
+
                     r1= np.random.random()
                     r2= np.random.random()
 
                     A1= 2* a* r1 -a
                     C1= 2* r2
 
-                    D_alpha = abs(C1 * Alpha[k] - W[k])
+                    D_alpha = abs(C1 * Alpha[k] - W[j][k])
                     X1 = Alpha[k] - A1 * D_alpha
 
                     r1= np.random.random()
@@ -87,7 +80,7 @@ class Neural_Network:
                     A2= 2* a* r1 -a
                     C2= 2* r2
 
-                    D_beta = abs(C2 * Beta[k] - W[k])
+                    D_beta = abs(C2 * Beta[k] - W[j][k])
                     X2 = Beta[k] - A2 * D_beta
 
                     r1= np.random.random()
@@ -96,19 +89,34 @@ class Neural_Network:
                     A3= 2* a* r1 -a
                     C3= 2* r2
 
-                    D_delta = abs(C3 * Delta[k] - W[k])
+                    D_delta = abs(C3 * Delta[k] - W[j][k])
                     X3 = Delta[k] - A3 * D_delta
 
-                    W[k] = (X1+X2+X3)/3
+                    W[j][k] = (X1+X2+X3)/3
 
-            x.append(self.MSE(W))
-            y.append(i)
-        
-        print("Cost:", self.MSE(W))
-        plt.plot(y, x)
-        plt.plot(np.argmin(x), np.amin(x), "r+", label = np.argmin(x))
+            for i in range(Agents):
+                W_fit[i] = self.MSE(W[i])
 
-        return W
+                x[i].append(float(W_fit[i]))
+                
+                if W_fit[i] < Alpha_score:
+                    Alpha_score = W_fit[i]
+                    Alpha = W[i].copy()
+                if W_fit[i] > Alpha_score and W_fit[i] < Beta_score:
+                    Beta_score = W_fit[i]
+                    Beta = W[i].copy()
+                if W_fit[i] > Alpha_score and W_fit[i] > Beta_score and W_fit[i] < Delta_score:
+                    Delta_score = W_fit[i]
+                    Delta = W[i].copy()
+            y.append(l)
+
+        for i in range(Agents):
+            plt.plot(y, x[i], label = ('Agent', i+1))
+        plt.plot(np.argmin(x)%self.rate, np.amin(x), 'b+')
+
+        print('Cost:', float(Alpha_score))
+
+        return Alpha
 
     def Predict(self, Passageiros, Cheio):
         W = self.GWO()
@@ -118,8 +126,6 @@ class Neural_Network:
 
 if __name__ == "__main__":
     
-    np.random.seed(0)
-
     dataset = np.array(list(csv.reader(open("csv desembarque.csv","r"), delimiter=';'))).astype("float")
     Entrada = np.hsplit(dataset, (0,1))[2]
     Tempo_por_Passageiro = np.hsplit(dataset, (0,1))[1]
