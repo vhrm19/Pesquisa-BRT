@@ -55,7 +55,7 @@ class Neural_Network:
         return 1/ len(self.Output) * sum((self.Output - y_hat[-1])**2)
 
     def GWO(self):
-        Agents = 10
+        Agents = 5
 
         y = []
         x = []
@@ -63,7 +63,7 @@ class Neural_Network:
         Pos = []
 
         for i in range(Agents):
-            np.random.seed(3)
+            np.random.seed(i)
             W.append(self.Random_Weights())
             x.append([])
             for m in range(len(W[i])):
@@ -100,7 +100,7 @@ class Neural_Network:
             a = 2 - l * 2 / self.rate
                 
             for j in range(Agents):
-                for k in range(len(Pos)):
+                for k in range(len(Pos[j])):
 
                     r1= np.random.random()
                     r2= np.random.random()
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     Tempo_por_Passageiro = np.hsplit(dataset, (0,1))[1]
 
     NN = Neural_Network(Entrada, Tempo_por_Passageiro)
-    NN.Predict(1,2)
+    NN.Predict(2,2)
 
     plt.ylabel("Custo")
     plt.xlabel("Iteração")
