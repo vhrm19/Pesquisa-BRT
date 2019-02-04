@@ -77,54 +77,59 @@ class Gradient_Optimisations:
             return W, V, S, S_hat, V_hat
 
 class Neural_Network:
-    def __init__(self, layers = [1], bias = 0.1, rate = 1000, 
-                    _lambda = 0.1, optimizer = 0, activation = 0, gradient_algorithm = 4, agents = 5):
+    def __init__(self, layers = 0, bias = 0, rate = 0, 
+                    _lambda = 0, optimizer = 0, activation = 0, gradient_algorithm = 0, agents = 0):
         self.Agents = agents
+        self.gradient_algorithm = gradient_algorithm
+        self.activation = activation
         self.AC = Activation_functions(activation)
         self.GA = Gradient_Optimisations(gradient_algorithm)
-        self.layers = layers
+        if layers == 0:
+            raise TypeError('Layers shape not defined!')
+        else:
+            self.layers = layers
         self.bias = bias
         self._lambda = _lambda
-        self.rate = rate
+        if rate == 0:
+            raise TypeError('Rate not defined!')
+        else:
+            self.rate = rate
+        self.W = "Not fitted"
+        self.Input_std = "Not fitted"
+        self.Input = "Not fitted"
+        self.Output = "Not fitted"
         self.optimizer = optimizer
     
-    def fit(self, Input, Output, verbose = 1, Graphs = False):
-        Input_std = Input.copy()
-        Input = (Input - np.mean(Input, 0)) / np.std(Input, 0)
+    def fit(self, Input, Output, verbose = 1):
+        self.Input_std = Input
+        self.Input = (Input - np.mean(Input, 0)) / np.std(Input, 0)
+        self.Output = Output
+        GO = ['SGD', 'Adam', 'RMSprop', 'AdaMax', 'AMSGrad']
+        AC = ['ReLU', 'Tanh', 'Sigmoid', 'Softplus']
+        if verbose == 1:
+            print('Bias =', self.bias)
+            print('Lambda L2 regularization parameter:', self._lambda)
+            print('Gradient optimisation algorithm:', GO[self.gradient_algorithm])
+            print('Activation Function:', AC[self.activation])
+
         if self.optimizer == 'Grad':
-            W, nd = self.Gradient_descent(Input, Output, verbose)
+            W, nd = self.Gradient_descent(verbose = verbose)
         elif self.optimizer == 'GWO':
-            W, nd = self.GWO(Input, Output, verbose)
+            if self.Agents == 0:
+                raise TypeError('Agents number not defined in NeuralNetwork!')
+            else:
+                W, nd = self.GWO(verbose = verbose)
         else:
             raise TypeError('Choose an optimizer: \'Grad\' for Gradient descent or \'GWO\' for Grey Wolf Optimizer')
-        if Graphs == True:
-            x = []
-            y = []
-            z = []
-
-            for i in range(1,10):
-                for j in range(1,4):
-                    k = NN.Predict(i,j,W, verbose = 0)
-                    x.append(i)
-                    y.append(j)
-                    z.append(k)
-
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.set_zlabel('Y')
-            ax.set_ylabel('X2')
-            ax.set_xlabel('X1')
-            ax.scatter(Input_std.T[0], Input_std.T[1], Output, c = 'red', label = 'Original Data')
-            ax.plot_trisurf(x,y,z)
-            plt.legend()
-            plt.show()
+        self.W = W
         return W
 
-    def Random_Weights(self, Input):
+
+    def Random_Weights(self):
         W = []
         for i in range(len(self.layers)):
             if i == 0:
-                W.append(np.random.rand(len(Input.T), self.layers[i]))
+                W.append(np.random.rand(len(self.Input.T), self.layers[i]))
             else:
                 W.append(np.random.rand(self.layers[i-1], self.layers[i]))
             W[i] = np.vstack((W[i], np.full(len(W[i].T), self.bias)))
@@ -140,25 +145,25 @@ class Neural_Network:
             a.append(self.AC.sigma(Z[i]))
         return a, Z
 
-    def Backpropagation(self, a, Z, W, Output):
+    def Backpropagation(self, a, Z, W):
         Grad = []
         d = []
         for i in range(len(W)):
             if i == 0:
-                d.append(np.multiply(Output - a[-1], - self.AC.dsigma(Z[-i + len(W) -1])))
+                d.append(np.multiply(self.Output - a[-1], - self.AC.dsigma(Z[-i + len(W) -1])))
             else:
                 d.append(np.multiply(np.dot(d[i-1], np.delete(W[-i + len(W)].T, -1, 1)), (self.AC.dsigma(Z[-i + len(W) -1]))))
             Grad.append(np.dot(a[-i + len(W) -1].T, d[i]) - self._lambda * W[-i + len(W) -1])
         return Grad[::-1]
         
-    def Gradient_descent(self, Input, Output, verbose = 1):
+    def Gradient_descent(self, verbose = 1):
         x, y, z = [], [], []
         S = []
         V = []
         S_hat = []
         V_hat = []
 
-        W = self.Random_Weights(Input)
+        W = self.Random_Weights()
 
         for i in range(len(W)):
             S.append(np.zeros_like(W[i]))
@@ -169,15 +174,20 @@ class Neural_Network:
         Cost = 1000000
         if verbose == 1:
             print('Optimizing Neural Network with Gradient descent...')
+        
+        for k in range(len(W)):
+            S.append(np.zeros_like(W[k]))
+            V.append(np.zeros_like(W[k]))
+            S_hat.append(np.zeros_like(W[k]))
 
         for j in range(self.rate):
-            a, Z = self.Forward_Propagation(Input, W)
-            Grad = self.Backpropagation(a, Z, W, Output)
+            a, Z = self.Forward_Propagation(self.Input, W)
+            Grad = self.Backpropagation(a, Z, W)
 
             W, V, S, S_hat, V_hat = self.GA.Gradient_algorithm(W, Grad, V, S, S_hat, V_hat)
 
-            Check = self.Gradient_checking(W, Grad, Input, Output)
-            Inst = self.MSE(W, Input, Output)
+            Check = self.Gradient_checking(W, Grad)
+            Inst = self.MSE(W)
 
             if Inst < Cost:
                 Cost = Inst
@@ -191,7 +201,7 @@ class Neural_Network:
             z.append(Check)
         if verbose == 1:
             print("Step:", step, "Minimum:", float(Cost), "GC:", Check_min)
-        plt.plot(step, Cost, 'r+')
+        plt.plot(step, Cost, 'b+')
         plt.plot(y, x, label  = "Cost")
         plt.plot(y, z, label  = "Grad. Checking")
         plt.ylabel("Cost")
@@ -200,14 +210,14 @@ class Neural_Network:
 
         return W_hat, Grad_hat
 
-    def Predict(self, x1, x2, W, verbose = 1):
+    def Predict(self, x1, x2, verbose = 1):
         _input = np.column_stack((x1, x2))
-        Out, nd = self.Forward_Propagation(_input, W)
+        Out, nd = self.Forward_Propagation(_input, self.W)
         if verbose != 0:
             print("Predicted result:", float(Out[-1]))
         return float(Out[-1])
 
-    def Gradient_checking(self, w, grad, Input, Output):
+    def Gradient_checking(self, w, grad):
         h = 0.0001
         V2 = []
         V1 = []
@@ -215,9 +225,9 @@ class Neural_Network:
             for j in range(len(w[i])):
                 for k in range(len(w[i][j])):
                     w[i][j][k] += h
-                    loss2 = self.MSE(w, Input, Output)
+                    loss2 = self.MSE(w)
                     w[i][j][k] -= 2*h
-                    loss1 = self.MSE(w, Input, Output)
+                    loss1 = self.MSE(w)
                     V2.append((loss2 - loss1) / (2 * h))
                     w[i][j][k] += h
         for i in range(len(grad)):
@@ -226,13 +236,35 @@ class Neural_Network:
                     V1.append(grad[i][j][k])
         return np.linalg.norm(np.array(V1) - np.array(V2).T) / np.linalg.norm(np.array(V1) + np.array(V2).T)
 
-    def Reshape(self, Weight, Input, Output):
+    def Graphs(self):
+        x = []
+        y = []
+        z = []
+
+        for i in range(1,10):
+            for j in range(1,4):
+                k = NN.Predict(i,j, verbose = 0)
+                x.append(i)
+                y.append(j)
+                z.append(k)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_zlabel('Y')
+        ax.set_ylabel('X2')
+        ax.set_xlabel('X1')
+        ax.scatter(self.Input_std.T[0], self.Input_std.T[1], self.Output, c = 'red', label = 'Original Data')
+        ax.plot_trisurf(x,y,z)
+        plt.legend()
+        plt.show()
+
+    def Reshape(self, Weight):
         W = []
-        shape = len(Input.T)
+        shape = len(self.Input.T)
         start = 0
         for i in range(len(self.layers)):
             if i == 0:
-                stop = (len(Input.T) + 1) * self.layers[0]
+                stop = (len(self.Input.T) + 1) * self.layers[0]
                 W.append(np.reshape(Weight[start : stop], [shape + 1, self.layers[i]]))
             else:
                 stop += (self.layers[i-1]+1) * self.layers[i]
@@ -240,14 +272,25 @@ class Neural_Network:
             shape = self.layers[i]
             start = stop
         return W
-    
-    def MSE(self, W, Input, Output):
-        if len(W) != len(self.layers):
-            W = self.Reshape(W, Input, Output)
-        y_hat, nd = self.Forward_Propagation(Input, W)
-        return 1/ len(Output) * sum((Output - y_hat[-1])**2)
 
-    def GWO(self, Input, Output, verbose = 1):
+    def LOOCV(self):
+        print('Calculating Leave-one-out cross validation')
+        cost = 0
+        Input = self.Input.copy()
+        Output = self.Output.copy()
+        for i in range(len(Input)):
+            W = self.fit(np.delete(Input, i, 0), np.delete(Output, i, 0), verbose=0)
+            y_hat, nd = self.Forward_Propagation([Input[i]], W)
+            cost += (Output[0] - y_hat[-1])**2
+        print("LOOCV:", float(cost / len(Input)))
+    
+    def MSE(self, W):
+        if len(W) != len(self.layers):
+            W = self.Reshape(W)
+        y_hat, nd = self.Forward_Propagation(self.Input, W)
+        return 1/ len(self.Output) * sum((self.Output - y_hat[-1])**2)
+
+    def GWO(self, verbose = 1):
         if verbose == 1:
             print('Optimizing Neural Network with',self.Agents, 'Grey Wolfs...')
 
@@ -258,7 +301,7 @@ class Neural_Network:
 
         for i in range(self.Agents):
             np.random.seed(i)
-            W.append(self.Random_Weights(Input))
+            W.append(self.Random_Weights())
             x.append([])
             for m in range(len(W[i])):
                 for n in range(len(W[i][m])):
@@ -277,7 +320,7 @@ class Neural_Network:
         for l in range(self.rate):
 
             for j in range(self.Agents):
-                W_fit[j] = self.MSE(Pos[j], Input, Output)
+                W_fit[j] = self.MSE(Pos[j])
 
                 x[j].append(float(W_fit[j]))
                 
@@ -334,15 +377,8 @@ class Neural_Network:
         if verbose == 1:
             print("Step:", np.argmin(x)%self.rate, "Minimum:", np.amin(x), 'Final Alpha Score:', float(Alpha_score))
 
-        return self.Reshape(Alpha, Input, Output), 0
+        return self.Reshape(Alpha), 0
 
-    def LOOCV(self, Input, Output):
-        print('Calculating Leave-one-out cross validation')
-        cost = 0
-        for i in range(len(Input)):
-            W = self.fit(np.delete(Input, i, 0), np.delete(Output, i, 0), verbose = 0)
-            cost += self.MSE(W, Input, Output)
-        print("LOOCV:", cost / len(Input))
 
 if __name__ == "__main__":
 
@@ -357,6 +393,7 @@ if __name__ == "__main__":
     # gradient_algorithm: 0 = SGD, 1 = Adam, 2 = RMSprop, 3 = Adamax, 4 = AMSGrad
     # agents = Agents nº for GWO
 
-    NN = Neural_Network(layers = [3,2,1], optimizer = "Grad", activation = 0, gradient_algorithm = 3, agents = 30)
-    NN.fit(Entrada, Tempo_por_Passageiro, Graphs = True)
-    NN.LOOCV(Entrada, Tempo_por_Passageiro)
+    NN = Neural_Network(optimizer = "Grad", layers = [3,2,1], rate=1000, activation=3, bias=0.1, gradient_algorithm=4, _lambda=0.1)
+    NN.fit(Entrada, Tempo_por_Passageiro)
+    NN.Graphs()
+    NN.LOOCV()
