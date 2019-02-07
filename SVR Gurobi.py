@@ -36,10 +36,6 @@ class SVR:
 
                 model = Model()
 
-                W = [   model.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, name="W0"),
-                        model.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, name="W1"),
-                        model.addVar(lb=-GRB.INFINITY, ub=GRB.INFINITY, name="bias") ]
-
                 K = np.array([self.Kernel(np.asarray(self.Input[i]), np.asarray(self.Input[j]))
                         for j in range(self.Input_std.shape[0])
                         for i in range(self.Input_std.shape[0])]).reshape((self.Input_std.shape[0],self.Input_std.shape[0])).tolist()
@@ -93,16 +89,6 @@ class SVR:
                 ax.plot_trisurf(x,y,z)
                 plt.legend()
                 plt.show()
-
-        def LOOCV(self):
-                print('Calculating Leave-one-out cross validation')
-                cost = 0
-                Input = self.Input.copy()
-                Output = self.Output.copy()
-                for i in range(len(Input)):
-                        self.fit(np.delete(Input, i, 0), np.delete(Output, i, 0))
-                        cost += (Output[i] - self.Predict(Input[i][0], Input[i][1]))**2
-                print("LOOCV:", float(cost / len(Input)))
 
 if __name__ == '__main__':
         np.random.seed(0)
