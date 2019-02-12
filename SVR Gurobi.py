@@ -3,39 +3,41 @@ import csv
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from gurobipy import *
+import sklearn as sk
+from sklearn import svm
 
 class Kernels:
-        def __init__(self, opt, gamma, degree, constant):
+        def __init__(self, opt, gamma, degree):
                 self.opt = opt
                 self.gamma = gamma
                 self.degree = degree
-                self.constant = constant
         
         def Kernel(self, xi, xj):
                 if self.opt == 0: # RBF
                         return np.exp(-self.gamma * np.linalg.norm(xi - xj)**2) 
 
                 if self.opt == 1: # Polynomial
-                        return pow(sum([xi[i] * xj[i] for i in range(len(xi))]) + self.constant, self.degree)
+                        return pow(sum([xi[i] * xj[i] for i in range(len(xi))]), self.degree)
 
                 if self.opt == 2: # Linear
                         return np.dot(xi, xj)
 
 class SVR:
-        def __init__(self, gamma = 0.1, degree = 3, constant = 0, C = 0.1, e = 0.1, kernel = 0):
-                self.C = C
-                self.e = e     
-                self.Kernel = Kernels(kernel, gamma, degree, constant).Kernel
+        def __init__(self, kernel = 0):
+                self.kernel = kernel
 
-        def fit(self, Input, Output):
+        def fit(self, Input, Output, verbose = 1):
                 self.Input_std = Input.copy()
                 self.Input = ((Input - np.mean(Input, 0)) / np.std(Input, 0))
                 self.Output = Output.tolist()
+                self.Hyperparameters()
+
                 a = []
                 a_star = []
 
                 model = Model()
-
+                model.Params.OutputFlag = verbose
+             
                 K = np.array([self.Kernel(np.asarray(self.Input[i]), np.asarray(self.Input[j]))
                         for j in range(self.Input_std.shape[0])
                         for i in range(self.Input_std.shape[0])]).reshape((self.Input_std.shape[0],self.Input_std.shape[0])).tolist()
@@ -51,7 +53,8 @@ class SVR:
 
                 model.addConstr(quicksum(a[i] - a_star[i] for i in range(len(self.Input))) == 0, name=("c0"))
                 for i in range(len(self.Input)):
-                        model.addConstr( 0 <= a[i] and a_star[i]  <= self.C, name=("c1%d" %i))
+                        model.addConstr( 0 <= a[i] <= self.C, name=("c1%d" %i))
+                        model.addConstr( 0 <= a_star[i] <= self.C, name=("c1%d" %i))
 
                 model.update()
                 model.optimize()
@@ -62,19 +65,17 @@ class SVR:
                         self.a.append(a[i].X)
                         self.a_star.append(a_star[i].X)
 
-                self.W = sum((a[i].X - a_star[i].X) * np.asarray(self.Input[i]) for i in range(len(self.Input)))
-                print(self.W)
-
         def Predict(self, x1, x2):
-                return sum((self.a[i] - self.a_star[i]) * self.Kernel(np.asarray(self.Input[i]), (x1,x2)) for i in range(len(self.Input)))
+                return sum((self.a[i] - self.a_star[i]) * self.Kernel(np.asarray(self.Input[i]), (x1,x2)) 
+                                for i in range(len(self.Input)))
 
         def Graphs(self):
                 x = []
                 y = []
                 z = []
 
-                for i in range(10):
-                        for j in range(4):
+                for i in range(1,10):
+                        for j in range(1,4):
                                 k = self.Predict(i,j)
                                 x.append(i)
                                 y.append(j)
@@ -90,6 +91,35 @@ class SVR:
                 plt.legend()
                 plt.show()
 
+        def LOOCV(self):
+                print('Calculating Leave-one-out cross validation')
+                cost = 0
+                Input = self.Input.copy()
+                Output = self.Output.copy()
+                for i in range(len(Input)):
+                        self.fit(np.delete(Input, i, 0), np.delete(Output, i, 0), verbose = 0)
+                        cost += (Output[i] - self.Predict(Input[i][0], Input[i][1]))**2
+                print("LOOCV:", float(cost / len(Input)))
+
+        def MSE(self):
+                cost = 0
+                for i in range(len(self.Input)):
+                        cost += (self.Output[i] - self.Predict(self.Input[i][0], self.Input[i][1]))**2
+                return cost / len(self.Input)
+
+        def Hyperparameters(self):
+                svr = svm.SVR()
+                param = {'C':np.random.uniform(low=0.1, high=10, size=(50,)),'gamma':np.random.uniform(low=1e-7, high=0.1, size=(50,)),
+                        'epsilon':np.random.uniform(low=0.1, high=1, size=(50,)), 'degree':np.random.randint(low=1, high=10, size=(10,))}
+                rand = sk.model_selection.RandomizedSearchCV(svr, param, cv = len(self.Input))
+                Out = np.reshape(self.Output, len(self.Output))
+                rand.fit(self.Input, Out)
+                rand.best_params_
+                param = rand.best_params_
+                self.C = param['C']
+                self.e = param['epsilon']     
+                self.Kernel = Kernels(self.kernel, param['gamma'], param['degree']).Kernel
+
 if __name__ == '__main__':
         np.random.seed(0)
 
@@ -97,6 +127,9 @@ if __name__ == '__main__':
         Entrada = np.hsplit(dataset, (0,1))[2]
         Tempo_por_Passageiro = np.hsplit(dataset, (0,1))[1]
 
-        Svr = SVR()
+        # kenel: 0 = RBF, 1 = Polynomial, 2 = Linear
+
+        Svr = SVR(kernel = 1)
         Svr.fit(Entrada, Tempo_por_Passageiro)
         Svr.Graphs()
+        Svr.LOOCV()
