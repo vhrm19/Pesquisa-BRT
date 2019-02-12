@@ -30,7 +30,8 @@ class SVR:
                 self.Input_std = Input.copy()
                 self.Input = ((Input - np.mean(Input, 0)) / np.std(Input, 0))
                 self.Output = Output.tolist()
-                self.Hyperparameters()
+                if verbose == 1:
+                        self.Hyperparameters()
 
                 a = []
                 a_star = []
