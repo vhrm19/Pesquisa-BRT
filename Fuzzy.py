@@ -68,7 +68,6 @@ def otimiza(y, x, h, plotaIC='false'):
             quicksum( (ac * x[i]) + (1 - h) * abs(x[i]) * awR) >= y[i])
 
     model.optimize()
-    ic = IC(x, y, ac, awL, awR, h, size)
 
 #    print(yname)
 #    print(xname)
@@ -80,7 +79,6 @@ def otimiza(y, x, h, plotaIC='false'):
         plota(x, y, ac, awL, awR, 1)
         return [ac, (ac - awL.x), (ac + awR.x)]
     if plotaIC == 'true':
-        plota(x, y, ac, awL, awR, 1)
         return model, ac, awL, awR
 
 def u_membership(y, ymid, yhigh, ylow):
@@ -93,7 +91,7 @@ def u_membership(y, ymid, yhigh, ylow):
     else:
         return 0
 
-def IC(x, y, ac, awL, awR, h, size):
+def IC(x, y, ac, awL, awR, h, size, verbose = True):
     ylow = []
     yhigh = []
     ymid = []
@@ -123,13 +121,18 @@ def IC(x, y, ac, awL, awR, h, size):
     for i in range(len(y)):
         u.append(u_membership(y[i], ymid[i], yhigh[i], ylow[i]))
 
-    # higher is better
-    print("IC:", float(SSR / SST))
-    # lower is better
-    print("AFS:", float(sum(h * abs(yhigh[i] - ylow[i]) for i in range(len(x)))))
-    # higher is better
-    print("MFC:", float(sum( u[i] / abs(yhigh[i] - ylow[i]) for i in range(len(x)))))
-    return IC
+    AFS = float(sum(h * abs(yhigh[i] - ylow[i]) for i in range(len(x))))
+    MFC = float(sum( u[i] / abs(yhigh[i] - ylow[i]) for i in range(len(x))))
+
+    if verbose == True:
+        # higher is better
+        print("IC:", float(SSR / SST))
+        # lower is better
+        print("AFS:", AFS)
+        # higher is better
+        print("MFC:", MFC)
+
+    return IC, MFC, AFS
 
 
 def plotaIC(y, x, size):
@@ -148,7 +151,7 @@ def plotaIC(y, x, size):
         model, ac, awL, awR = otimiza(y, x, h, plotaIC='true')
         awRlist.append(awR.x)
         awLlist.append(awL.x)
-        IClist.append(IC(x, y, ac, awL, awR, h, size))
+        IClist.append(IC(x, y, ac, awL, awR, h, size, verbose = False))
 
     x = hlist
     y = IClist
@@ -180,6 +183,7 @@ def plotaIC(y, x, size):
 
 def otimiza_h( x, y):
     model, ac, awL, awR = otimiza(y, x, 0, plotaIC='true')
+    IC(x, y, ac, awL, awR, 0, 1, verbose = True)
 
     ylow = []
     yhigh = []
@@ -206,9 +210,31 @@ def otimiza_h( x, y):
     else:
         h = 0
 
-    print("h:", h)
+    print("h otimo:", h[0])
 
     model, ac, awL, awR = otimiza(y, x, h, plotaIC='true')
+    IC(x, y, ac, awL, awR, h, 1, verbose = True)
+
+def varGOF(x, y):
+    MFClist = []
+    AFSlist = []
+    IClist = []
+
+    hlist = np.arange(0, 1, 0.05)
+
+    for h in hlist:
+        model, ac, awL, awR = otimiza(y, x, h, plotaIC='true')
+        ic, MFC, AFS = IC(x, y, ac, awL, awR, h, 1, verbose = False)
+        MFClist.append(MFC)
+        IClist.append(ic)
+        AFSlist.append(AFS)
+    
+    plt.plot(hlist, IClist, label = 'IC')
+    plt.plot(hlist, AFSlist, label = 'AFS')
+    plt.plot(hlist, MFClist, label = 'MFC')
+    plt.xlabel('h')
+    plt.legend()
+    plt.show()
 
 def Passageiros(x):
     Pouco = []
@@ -227,10 +253,11 @@ def Passageiros(x):
 if __name__ == "__main__":
 
     data = np.array(list(csv.reader(open("csv desembarque.csv","r"), delimiter=';'))).astype("float")
-    dataset = Passageiros(data)[0] # Passageiros: 0 = Poucos, 1 = Medio, 2 = Muitos
+    dataset = Passageiros(data)[1] # Passageiros: 0 = Poucos, 1 = Medio, 2 = Muitos
     Entrada = np.hsplit(dataset, (0,1))[2]
     Tempo_por_Passageiro = np.hsplit(dataset, (0,1))[1]
 
     otimiza_h(Entrada, Tempo_por_Passageiro)
+    varGOF(Entrada, Tempo_por_Passageiro)
 
     #plotaIC(Entrada, Tempo_por_Passageiro, 1)
