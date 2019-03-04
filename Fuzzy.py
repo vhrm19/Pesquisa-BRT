@@ -134,52 +134,59 @@ def IC(x, y, ac, awL, awR, h, size, verbose = True):
 
     return IC, MFC, AFS
 
-
-def plotaIC(y, x, size):
-    h = 0
+def plotaGOF(y, x, size):
     IClist = []
-    hlist = []
+    MFClist = []
+    AFSlist = []
     awRlist = []
     awLlist = []
 
     #nomeia = y.name
 
-    for i in range(0, 19):
-        h += 0.05
-        print(h)
-        hlist.append(h)
+    hlist = np.arange(0,1,0.05)
+
+    for h in hlist:
         model, ac, awL, awR = otimiza(y, x, h, plotaIC='true')
+        ic, MFC, AFS = IC(x, y, ac, awL, awR, h, size, verbose = False)
         awRlist.append(awR.x)
         awLlist.append(awL.x)
-        IClist.append(IC(x, y, ac, awL, awR, h, size, verbose = False))
-
-    x = hlist
-    y = IClist
+        AFSlist.append(AFS)
+        MFClist.append(MFC)
+        IClist.append(ic)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     ax.set_xlabel('índice h')
-    ax.set_ylabel('IC')
+    ax.set_ylabel('GOF')
     ax.set_zlabel('aR')
     ax.set_facecolor('white')
-    ax.plot(x, y, awRlist)
-    plt.savefig('imgs/IC_awR_', bbox_inches='tight')
-    #plt.show()
-    plt.clf()
-    plt.cla()
+    ax.plot(hlist, IClist, awRlist, label = 'IC')
+    ax.plot(hlist, MFClist, awRlist, label = 'MFC')
+    ax.plot(hlist, AFSlist, awRlist, label = 'AFS')
+    ax.set_ylim([0, 25])
+    #plt.savefig('imgs/IC_awR_', bbox_inches='tight')
+    #plt.clf()
+    #plt.cla()
+    plt.legend()
+    plt.show()
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     ax.set_xlabel('índice h')
-    ax.set_ylabel('IC')
+    ax.set_ylabel('GOF')
     ax.set_zlabel('aL')
     ax.set_facecolor('white')
-    ax.plot(x, y, awLlist)
-    plt.savefig('imgs/IC_awL_', bbox_inches='tight')
-    plt.clf()
-    plt.cla()
+    ax.plot(hlist, IClist, awLlist, label = 'IC')
+    ax.plot(hlist, MFClist, awLlist, label = 'MFC')
+    ax.plot(hlist, AFSlist, awLlist, label = 'AFS')
+    #plt.savefig('imgs/IC_awL_', bbox_inches='tight')
+    #plt.clf()
+    #plt.cla()
+    ax.set_ylim([0, 25])
+    plt.legend()
+    plt.show()
 
 def otimiza_h( x, y):
     model, ac, awL, awR = otimiza(y, x, 0, plotaIC='true')
@@ -215,27 +222,6 @@ def otimiza_h( x, y):
     model, ac, awL, awR = otimiza(y, x, h, plotaIC='true')
     IC(x, y, ac, awL, awR, h, 1, verbose = True)
 
-def varGOF(x, y):
-    MFClist = []
-    AFSlist = []
-    IClist = []
-
-    hlist = np.arange(0, 1, 0.05)
-
-    for h in hlist:
-        model, ac, awL, awR = otimiza(y, x, h, plotaIC='true')
-        ic, MFC, AFS = IC(x, y, ac, awL, awR, h, 1, verbose = False)
-        MFClist.append(MFC)
-        IClist.append(ic)
-        AFSlist.append(AFS)
-    
-    plt.plot(hlist, IClist, label = 'IC')
-    plt.plot(hlist, AFSlist, label = 'AFS')
-    plt.plot(hlist, MFClist, label = 'MFC')
-    plt.xlabel('h')
-    plt.legend()
-    plt.show()
-
 def Passageiros(x):
     Pouco = []
     Medio = []
@@ -258,6 +244,4 @@ if __name__ == "__main__":
     Tempo_por_Passageiro = np.hsplit(dataset, (0,1))[1]
 
     otimiza_h(Entrada, Tempo_por_Passageiro)
-    varGOF(Entrada, Tempo_por_Passageiro)
-
-    #plotaIC(Entrada, Tempo_por_Passageiro, 1)
+    plotaGOF(Tempo_por_Passageiro, Entrada, 1)
